@@ -1,17 +1,18 @@
-# Click to GeoJSON
+# Click 2 Vector
 
-An interactive Streamlit application for creating and exporting geographic points as GeoJSON files. Click on a map, search for locations, or enter coordinates manually to build your dataset, then export it for use in GIS software, web maps, or other spatial applications.
+An interactive Streamlit application for creating and exporting geographic points as multiple vector formats. Click on a map, import from Google Sheets, or enter coordinates manually to build your dataset, then export it for use in GIS software, web maps, or other spatial applications.
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
 
 ## Features
 
-- **Interactive Map**: Click anywhere on the map to add points with multiple basemap options
+- **Interactive Map**: Click anywhere on the map to add points with search functionality
+- **Google Sheets Import**: Import point data directly from public Google Sheets with WKT geometry or lat/lon columns
 - **Location Search**: Built-in geocoding search to find cities, landmarks, and addresses
-- **Manual Coordinate Entry**: Input precise latitude/longitude coordinates in bulk
-- **Point Management**: View, delete, and manage individual points in a data table
-- **GeoJSON Export**: Download your points as a standard GeoJSON file with timestamps
-- **Multiple Map Styles**: Choose from OpenStreetMap, Esri Satellite, and CartoDB themes
+- **Point Management**: View, delete, and manage individual points in an interactive data table
+- **Multiple Export Formats**: Download your points as GeoJSON, Esri Shapefile (.zip), or FlatGeobuf
+- **Custom Filenames**: Option to specify custom filenames for exports
+- **Modern UI**: Clean, responsive interface with custom styling
 - **Mini Map**: Overview navigation with collapsible mini-map widget
 
 ## Installation & Setup
@@ -28,7 +29,7 @@ This project uses Poetry for dependency management.
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd click-to-geojson
+   cd blank-app
    ```
 
 2. **Install dependencies with Poetry**
@@ -48,21 +49,37 @@ This project uses Poetry for dependency management.
 ### Adding Points
 - **Map Clicking**: Simply click anywhere on the interactive map to drop a pin
 - **Location Search**: Use the search box in the top-right corner to find specific places
-- **Manual Entry**: Use the coordinate input form to add multiple points at once
+- **Google Sheets Import**: Paste a public Google Sheets URL with coordinate data
+
+### Google Sheets Import
+Your Google Sheet should have either:
+- A column with 'wkt' or 'geom' in the name containing WKT Point format: `Point (longitude latitude)`
+- OR separate columns with 'lat' and 'lon' (or 'lng') in their names
+
+Example formats:
+```
+wkt_geom,name,description
+Point (-122.4194 37.7749),San Francisco,Golden Gate City
+Point (-74.0060 40.7128),New York,Big Apple
+```
+
+OR
+
+```
+latitude,longitude,name,description
+37.7749,-122.4194,San Francisco,Golden Gate City
+40.7128,-74.0060,New York,Big Apple
+```
 
 ### Managing Your Data
-- **View Points**: Expand the "Point Viewer" to see all your points in a table format
-- **Delete Points**: Remove individual points or clear all points at once
-- **Export Data**: Download your complete dataset as a GeoJSON file
+- **View Points**: Expand the "Point Table" to see all your points in an interactive table
+- **Delete Points**: Remove individual points by selecting rows in the table, or use the "Remove Last Point" and "Clear All Points" buttons
+- **Export Data**: Choose from multiple formats and download your complete dataset
 
-### Coordinate Format
-When using manual entry, use this format:
-```
-52.5200,13.4050,Berlin
-52.5163,13.3777,Brandenburg Gate
-52.5244,13.4105,Alexanderplatz
-```
-Format: `latitude,longitude,optional_name`
+### Export Formats
+- **GeoJSON**: Standard GeoJSON format for web applications and GIS software
+- **Esri Shapefile (.zip)**: Compressed shapefile format for ArcGIS and other GIS applications
+- **FlatGeobuf**: Efficient binary format for large datasets
 
 ## Dependencies
 
@@ -70,55 +87,65 @@ Format: `latitude,longitude,optional_name`
 - **folium**: Interactive map creation with plugins
 - **streamlit-folium**: Streamlit integration for folium maps
 - **pandas**: Data manipulation and display
-- **json**: GeoJSON file handling
+- **geopandas**: Geospatial data handling
+- **fiona**: Vector data format support
+- **shapely**: Geometric operations
 
 ## Project Structure
 
 ```
-├── streamlit_app.py              # Main Streamlit application
-├── click_to_geojson_functionality.py  # Core GeoJSON functions
-├── pyproject.toml               # Poetry configuration
-└── README.md                    # Project documentation
+├── streamlit_app.py                    # Main Streamlit application
+├── click_to_geojson_functionality.py   # Core GeoJSON and export functions
+├── google_sheets_parser.py             # Google Sheets import functionality
+├── map_point_parser.py                 # Interactive map interface
+├── styling.py                          # Custom UI styling and components
+├── pyproject.toml                      # Poetry configuration
+└── README.md                           # Project documentation
 ```
 
 ## Core Functions
 
-### `add_point(lat, lon, name="")`
+### `add_point(lat, lon, name_or_properties="")`
 Adds a new point to the session state with automatic naming and timestamps.
 
 ### `create_geojson()`
 Generates a GeoJSON FeatureCollection from all stored points.
 
-### `reset_points()`
-Clears all points and resets the session state.
+### `export_data(gdf, export_type)`
+Exports GeoDataFrame to the specified format (GeoJSON, Shapefile, or FlatGeobuf).
+
+### `import_from_google_sheets(sheets_url)`
+Imports point data from a public Google Sheets URL.
 
 ## Configuration
 
-The app includes several customizable basemap options:
-- **Open Street Map**: Standard OpenStreetMap tiles
-- **Esri Satellite**: High-resolution satellite imagery
-- **Simple Light**: Clean CartoDB Positron theme
-- **Simple Dark**: Dark CartoDB theme
+The app includes several customizable features:
+- **Interactive Map**: OpenStreetMap tiles with search and mini-map
+- **Export Options**: Multiple vector formats for different use cases
+- **Custom Styling**: Modern UI with consistent button styling
+- **Session Management**: Persistent data across app interactions
 
 ## Changelog
 
 ### [0.1.0] - 2024-01-16
 #### Added
-- Initial release of Map to GeoJSON Exporter
+- Initial release of Click 2 Vector
 - Interactive map interface using Folium with geocoding search
+- Google Sheets import functionality with WKT and lat/lon support
+- Multiple export formats (GeoJSON, Shapefile, FlatGeobuf)
 - Mini-map widget for better navigation
-- Manual coordinate entry form with bulk input support
-- Point management system (add, remove, clear) with data table view
-- GeoJSON export functionality with timestamps
+- Point management system with interactive data table
+- Custom filename support for exports
+- Modern UI with custom styling
 - Session state management for persistent data
-- Multiple basemap options (OpenStreetMap, Esri Satellite, CartoDB themes)
-- Enhanced UI layout with improved coordinate input
+- Modular architecture with separated concerns
 
 #### Technical
 - Streamlit-based web interface
 - Folium integration with plugins for interactive maps and search
-- GeoJSON standard compliance for exports
-- Responsive layout design
+- GeoPandas for geospatial data handling
+- Fiona for vector format support
+- Responsive layout design with custom CSS
 
 ## Contributing
 
@@ -141,4 +168,4 @@ If you encounter any issues or have questions:
 
 ---
 
-**Made with Streamlit and Folium**
+**Made with Streamlit, Folium, and GeoPandas**
