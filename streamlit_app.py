@@ -55,8 +55,8 @@ if sheets_url and sheets_url != st.session_state.get('last_sheets_url', ''):
     if success:
         st.rerun()
 
-# Render the map interface using the new module
-render_map_interface()
+# # Render the map interface using the new module
+# render_map_interface()
 
 
 # Only show export options if points exist

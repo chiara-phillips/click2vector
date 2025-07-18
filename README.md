@@ -17,29 +17,29 @@ An interactive Streamlit application for creating and exporting geographic point
 
 ## Installation & Setup
 
-This project uses Poetry for dependency management.
+This project uses pip for dependency management.
 
 ### Prerequisites
 
 - Python 3.9+ (excluding 3.9.7)
-- Poetry
+- pip
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd blank-app
+   cd click2vector
    ```
 
-2. **Install dependencies with Poetry**
+2. **Install dependencies with pip**
    ```bash
-   poetry install
+   pip install -r requirements.txt
    ```
 
 3. **Run the application**
    ```bash
-   poetry run streamlit run streamlit_app.py
+   streamlit run streamlit_app.py
    ```
 
 4. **Open your browser** and navigate to the local URL (typically http://localhost:8501)
@@ -83,13 +83,13 @@ latitude,longitude,name,description
 
 ## Dependencies
 
-- **streamlit**: Web application framework
-- **folium**: Interactive map creation with plugins
-- **streamlit-folium**: Streamlit integration for folium maps
-- **pandas**: Data manipulation and display
-- **geopandas**: Geospatial data handling
-- **fiona**: Vector data format support
-- **shapely**: Geometric operations
+- **streamlit==1.47.0**: Web application framework
+- **folium==0.20.0**: Interactive map creation with plugins
+- **streamlit-folium==0.25.0**: Streamlit integration for folium maps
+- **pandas==2.3.1**: Data manipulation and display
+- **geopandas==0.13.2**: Geospatial data handling (includes fiona and shapely)
+
+All dependencies are specified in `requirements.txt` for easy installation.
 
 ## Project Structure
 
@@ -99,7 +99,7 @@ latitude,longitude,name,description
 ├── google_sheets_parser.py             # Google Sheets import functionality
 ├── map_point_parser.py                 # Interactive map interface
 ├── styling.py                          # Custom UI styling and components
-├── pyproject.toml                      # Poetry configuration
+├── requirements.txt                    # Python dependencies
 └── README.md                           # Project documentation
 ```
 
