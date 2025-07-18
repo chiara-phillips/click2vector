@@ -2,7 +2,7 @@
 
 An interactive Streamlit application for creating and exporting geographic points as multiple vector formats. Click on a map, import from Google Sheets, or enter coordinates manually to build your dataset, then export it for use in GIS software, web maps, or other spatial applications.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://click2vector.streamlit.app/)
 
 ## Installation & Setup
 
