@@ -1,7 +1,7 @@
 import folium
 import pandas as pd
 import streamlit as st
-from streamlit_folium import st_folium
+from streamlit_folium import folium_static
 
 from click_to_geojson_functionality import add_point
 
@@ -211,13 +211,41 @@ def create_point_table():
             pass
 
 
+def create_manual_point_input():
+    """Create manual point input controls.
+
+    Returns
+    -------
+    None
+        Renders manual point input interface.
+    """
+    with st.expander("Add Point Manually", expanded=False):
+        col1, col2, col3 = st.columns([2, 2, 1])
+
+        with col1:
+            lat = st.number_input(
+                "Latitude", value=52.5200, format="%.6f", key="manual_lat"
+            )
+
+        with col2:
+            lon = st.number_input(
+                "Longitude", value=13.4050, format="%.6f", key="manual_lon"
+            )
+
+        with col3:
+            if st.button("Add Point", key="add_manual_point"):
+                add_point(lat, lon)
+                st.success(f"Added point at {lat}, {lon}")
+                st.rerun()
+
+
 def render_map_interface():
     """Main function to render the complete map interface.
 
     Returns
     -------
-    dict
-        The map data returned from st_folium for further processing.
+    None
+        Renders the map interface without click capture.
     """
     # Create map with features
     map_object = create_map_with_features()
@@ -225,24 +253,17 @@ def render_map_interface():
     # Add existing points to map
     add_existing_points_to_map(map_object)
 
-    # Display the map and capture clicks
-    map_data = st_folium(
+    # Display the map (static, no click capture)
+    folium_static(
         map_object,
         width=750,
         height=300,
-        returned_objects=["last_clicked"],
-        key="map",
-        use_container_width=True,
     )
 
-    # Handle map clicks
-    new_point_added = handle_map_clicks(map_data)
-    if new_point_added:
-        st.rerun()
+    # Add manual point input since we can't capture clicks
+    create_manual_point_input()
 
     # Show point management controls if points exist
     if st.session_state.points:
         create_point_management_controls()
         create_point_table()
-
-    return map_data

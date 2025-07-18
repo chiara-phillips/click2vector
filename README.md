@@ -4,17 +4,6 @@ An interactive Streamlit application for creating and exporting geographic point
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
 
-## Features
-
-- **Interactive Map**: Click anywhere on the map to add points with search functionality
-- **Google Sheets Import**: Import point data directly from public Google Sheets with WKT geometry or lat/lon columns
-- **Location Search**: Built-in geocoding search to find cities, landmarks, and addresses
-- **Point Management**: View, delete, and manage individual points in an interactive data table
-- **Multiple Export Formats**: Download your points as GeoJSON, Esri Shapefile (.zip), or FlatGeobuf
-- **Custom Filenames**: Option to specify custom filenames for exports
-- **Modern UI**: Clean, responsive interface with custom styling
-- **Mini Map**: Overview navigation with collapsible mini-map widget
-
 ## Installation & Setup
 
 This project uses pip for dependency management.
@@ -63,7 +52,7 @@ For development, install additional dependencies and set up pre-commit hooks:
    pre-commit run --all-files
    ```
 
-## 📖 Usage
+## Usage
 
 ### Adding Points
 - **Map Clicking**: Simply click anywhere on the interactive map to drop a pin
@@ -74,21 +63,6 @@ For development, install additional dependencies and set up pre-commit hooks:
 Your Google Sheet should have either:
 - A column with 'wkt' or 'geom' in the name containing WKT Point format: `Point (longitude latitude)`
 - OR separate columns with 'lat' and 'lon' (or 'lng') in their names
-
-Example formats:
-```
-wkt_geom,name,description
-Point (-122.4194 37.7749),San Francisco,Golden Gate City
-Point (-74.0060 40.7128),New York,Big Apple
-```
-
-OR
-
-```
-latitude,longitude,name,description
-37.7749,-122.4194,San Francisco,Golden Gate City
-40.7128,-74.0060,New York,Big Apple
-```
 
 ### Managing Your Data
 - **View Points**: Expand the "Point Table" to see all your points in an interactive table
@@ -122,28 +96,6 @@ All dependencies are specified in `requirements.txt` for easy installation.
 └── README.md                           # Project documentation
 ```
 
-## Core Functions
-
-### `add_point(lat, lon, name_or_properties="")`
-Adds a new point to the session state with automatic naming and timestamps.
-
-### `create_geojson()`
-Generates a GeoJSON FeatureCollection from all stored points.
-
-### `export_data(gdf, export_type)`
-Exports GeoDataFrame to the specified format (GeoJSON, Shapefile, or FlatGeobuf).
-
-### `import_from_google_sheets(sheets_url)`
-Imports point data from a public Google Sheets URL.
-
-## Configuration
-
-The app includes several customizable features:
-- **Interactive Map**: OpenStreetMap tiles with search and mini-map
-- **Export Options**: Multiple vector formats for different use cases
-- **Custom Styling**: Modern UI with consistent button styling
-- **Session Management**: Persistent data across app interactions
-
 ## Changelog
 
 ### [0.1.0] - 2024-01-16
@@ -159,12 +111,6 @@ The app includes several customizable features:
 - Session state management for persistent data
 - Modular architecture with separated concerns
 
-#### Technical
-- Streamlit-based web interface
-- Folium integration with plugins for interactive maps and search
-- GeoPandas for geospatial data handling
-- Fiona for vector format support
-- Responsive layout design with custom CSS
 
 ## Contributing
 
@@ -184,7 +130,3 @@ If you encounter any issues or have questions:
 1. Check the existing issues on GitHub
 2. Create a new issue with detailed information
 3. Include steps to reproduce any bugs
-
----
-
-**Made with Streamlit, Folium, and GeoPandas**

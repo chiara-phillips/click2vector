@@ -140,3 +140,6 @@ if st.session_state.points:
         ):
             # This block executes when the button is clicked
             st.success("Export completed!")
+
+st.divider()
+st.write("More info and ⭐ at github.com/chiara-phillips/click2vector")
