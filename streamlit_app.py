@@ -142,4 +142,8 @@ if st.session_state.points:
             st.success("Export completed!")
 
 st.divider()
-st.write("More info and ⭐ at github.com/chiara-phillips/click2vector")
+st.markdown(
+    "More info and ⭐ at "
+    "[github.com/chiara-phillips/click2vector]"
+    "(https://github.com/chiara-phillips/click2vector)"
+)
