@@ -96,20 +96,10 @@ All dependencies are specified in `requirements.txt` for easy installation.
 └── README.md                           # Project documentation
 ```
 
-## Changelog
+## CHANGELOG
 
-### [0.1.0] - 2024-01-16
-#### Added
-- Initial release of Click 2 Vector
-- Interactive map interface using Folium with geocoding search
-- Google Sheets import functionality with WKT and lat/lon support
-- Multiple export formats (GeoJSON, Shapefile, FlatGeobuf)
-- Mini-map widget for better navigation
-- Point management system with interactive data table
-- Custom filename support for exports
-- Modern UI with custom styling
-- Session state management for persistent data
-- Modular architecture with separated concerns
+`0.1.0` - 2024-01-16
+- Initial release
 
 
 ## Contributing
