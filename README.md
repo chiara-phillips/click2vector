@@ -44,6 +44,25 @@ This project uses pip for dependency management.
 
 4. **Open your browser** and navigate to the local URL (typically http://localhost:8501)
 
+### Development Setup
+
+For development, install additional dependencies and set up pre-commit hooks:
+
+1. **Install development dependencies**
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+
+2. **Install pre-commit hooks**
+   ```bash
+   pre-commit install
+   ```
+
+3. **Run pre-commit on all files (optional)**
+   ```bash
+   pre-commit run --all-files
+   ```
+
 ## 📖 Usage
 
 ### Adding Points

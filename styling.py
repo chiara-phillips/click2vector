@@ -1,8 +1,12 @@
+"""
+This module contains the styling for the Streamlit app.
+"""
 
 import streamlit as st
 
+
 def create_styled_title(
-    text: str, level: int = 1, color: str = '#f75f61', align: str = "left"
+    text: str, level: int = 1, color: str = "#f75f61", align: str = "left"
 ) -> None:
     """Render a styled HTML heading in Streamlit using Seqana's design conventions.
 
@@ -27,7 +31,7 @@ def create_styled_title(
         raise ValueError("Heading level must be between 1 and 6")
 
     st.markdown(
-        f"<h{level} style='text-align: {align}; color: {color};'>{text}</h{level}>",
+        f"<h{level} style='text-align: {align}; color: {color};'>" f"{text}</h{level}>",
         unsafe_allow_html=True,
     )
 
@@ -46,7 +50,8 @@ def inject_global_css() -> None:
     """
     st.markdown(
         f"""
-            <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600&display=swap" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600"
+                  rel="stylesheet">
             <style>
                 /* Default Style for ALL Buttons (Generate & Download) */
                 div.stButton > button,
@@ -58,7 +63,8 @@ def inject_global_css() -> None:
                     padding: 8px 16px;
                     font-size: 16px;
                     transition: 0.3s;
-                    font-family: 'Inter', system-ui, 'Segoe UI', Arial, sans-serif !important;
+                    font-family: 'Inter', system-ui, 'Segoe UI', Arial, sans-serif
+                    !important;
                 }}
 
                 /* Hover Effect for ALL Buttons */

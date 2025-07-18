@@ -1,15 +1,26 @@
+"""
+This is the main Streamlit app that combines all the functionality.
+"""
+
 import streamlit as st
-from click_to_geojson_functionality import create_geojson, get_base_filename, export_data, points_to_gdf
-from styling import inject_global_css, create_styled_title
+
+from click_to_geojson_functionality import (
+    create_geojson,
+    export_data,
+    get_base_filename,
+    points_to_gdf,
+)
 from google_sheets_parser import import_from_google_sheets
 from map_point_parser import render_map_interface
+from styling import create_styled_title, inject_global_css
 
 # Set page config
 st.set_page_config(page_title="Map to GeoJSON Exporter", layout="centered")
 inject_global_css()
 
 # Add custom CSS to reduce top margin
-st.markdown("""
+st.markdown(
+    """
 <style>
     .block-container {
         padding-top: 1rem;
@@ -22,41 +33,46 @@ st.markdown("""
         padding-top: 1rem;
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # Initialize session state for storing points
-if 'points' not in st.session_state:
+if "points" not in st.session_state:
     st.session_state.points = []
-if 'last_click' not in st.session_state:
+if "last_click" not in st.session_state:
     st.session_state.last_click = None
-if 'message' not in st.session_state:
+if "message" not in st.session_state:
     st.session_state.message = None
-
 
 
 # Main app
 create_styled_title("Click 2 Vector", align="center")
-st.markdown("<p style='text-align: center; color: grey;'>Create and export spatial point data from a few map clicks or a spreadsheet.</p>", unsafe_allow_html=True)
+st.markdown(
+    "<p style='text-align: center; color: grey;'>Create and export spatial point data "
+    "from a few map clicks or a spreadsheet.</p>",
+    unsafe_allow_html=True,
+)
 
 # Google Sheets URL input
 sheets_url = st.text_input(
     "Public Google Sheets URL with `wkt_geom` or `Latitude` and `Longitude` columns:",
     placeholder="https://docs.google.com/spreadsheets/d/...",
-    key="sheets_url_input"
+    key="sheets_url_input",
 )
 
 # Check if URL was entered and is different from last time
-if sheets_url and sheets_url != st.session_state.get('last_sheets_url', ''):
+if sheets_url and sheets_url != st.session_state.get("last_sheets_url", ""):
     # Store the current URL to detect changes
     st.session_state.last_sheets_url = sheets_url
-    
+
     # Import from Google Sheets using the new module
     success = import_from_google_sheets(sheets_url)
     if success:
         st.rerun()
 
-# # Render the map interface using the new module
-# render_map_interface()
+# Render the map interface using the new module
+render_map_interface()
 
 
 # Only show export options if points exist
@@ -67,7 +83,7 @@ if st.session_state.points:
         options=["GeoJSON", "Esri Shapefile (.zip)", "FlatGeobuf"],
         index=0,
         horizontal=True,
-        key="export_type_radio"
+        key="export_type_radio",
     )
 
     # Custom filename input
@@ -77,7 +93,7 @@ if st.session_state.points:
         value=default_filename,
         placeholder="Enter custom filename or use default",
     )
-    
+
     # Use custom filename if provided, otherwise use default
     if custom_filename.strip():
         filename = custom_filename.strip()
@@ -92,18 +108,21 @@ if st.session_state.points:
     export_filename = {
         "GeoJSON": f"{filename}.geojson",
         "Esri Shapefile (.zip)": f"{filename}.zip",
-        "FlatGeobuf": f"{filename}.fgb"
+        "FlatGeobuf": f"{filename}.fgb",
     }[export_type]
 
     export_mime = {
         "GeoJSON": "application/geo+json",
         "Esri Shapefile (.zip)": "application/zip",
-        "FlatGeobuf": "application/octet-stream"
+        "FlatGeobuf": "application/octet-stream",
     }[export_type]
 
     # Display any pending messages
     if st.session_state.message:
-        if "error" in st.session_state.message.lower() or "no points" in st.session_state.message.lower():
+        if (
+            "error" in st.session_state.message.lower()
+            or "no points" in st.session_state.message.lower()
+        ):
             st.error(st.session_state.message)
         else:
             st.success(st.session_state.message)
@@ -117,7 +136,7 @@ if st.session_state.points:
             data=export_data(gdf, export_type),
             file_name=export_filename,
             mime=export_mime,
-            type="primary"
+            type="primary",
         ):
             # This block executes when the button is clicked
             st.success("Export completed!")
