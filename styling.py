@@ -4,6 +4,9 @@ This module contains the styling for the Streamlit app.
 
 import streamlit as st
 
+DEFAULT_BUTTON_COLOR = "#f75f61"
+HOVER_BUTTON_COLOR = "#f97f81"
+
 
 def create_styled_title(
     text: str, level: int = 1, color: str = "#f75f61", align: str = "left"
@@ -56,7 +59,7 @@ def inject_global_css() -> None:
                 /* Default Style for ALL Buttons (Generate & Download) */
                 div.stButton > button,
                 div.stDownloadButton > button {{
-                    background-color: #f75f61 !important;
+                    background-color: {DEFAULT_BUTTON_COLOR} !important;
                     color: white !important;
                     border-radius: 100px !important;
                     border: none;
@@ -70,7 +73,7 @@ def inject_global_css() -> None:
                 /* Hover Effect for ALL Buttons */
                 div.stButton > button:hover,
                 div.stDownloadButton > button:hover {{
-                    background-color: #f97f81 !important;
+                    background-color: {HOVER_BUTTON_COLOR} !important;
                     color: white !important;
                 }}
 
@@ -79,7 +82,7 @@ def inject_global_css() -> None:
                 div.stButton > button:active,
                 div.stDownloadButton > button:focus,
                 div.stDownloadButton > button:active {{
-                    background-color: #f75f61 !important;
+                    background-color: {DEFAULT_BUTTON_COLOR} !important;
                     color: white !important;
                     outline: none !important;
                     border: none !important;

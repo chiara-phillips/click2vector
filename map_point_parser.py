@@ -1,6 +1,6 @@
 import folium
+import pandas as pd
 import streamlit as st
-from folium import plugins
 from streamlit_folium import st_folium
 
 from click_to_geojson_functionality import add_point
@@ -81,18 +81,21 @@ def handle_map_clicks(map_data):
     bool
         True if a new point was added, False otherwise.
     """
-    if map_data["last_clicked"]:
-        clicked_lat = map_data["last_clicked"]["lat"]
-        clicked_lon = map_data["last_clicked"]["lng"]
+    try:
+        clicked_data = map_data["last_clicked"]
+        clicked_lat = clicked_data["lat"]
+        clicked_lon = clicked_data["lng"]
 
         # Check if this is a new click (avoid duplicate additions)
-        if not st.session_state.get("last_click") or st.session_state.last_click != (
-            clicked_lat,
-            clicked_lon,
-        ):
+        last_click = st.session_state.get("last_click")
+        if last_click != (clicked_lat, clicked_lon):
             add_point(clicked_lat, clicked_lon)
             st.session_state.last_click = (clicked_lat, clicked_lon)
             return True  # Indicate that a new point was added
+
+    except (KeyError, TypeError):
+        # No click data or invalid format
+        pass
 
     return False  # No new point was added
 
@@ -109,17 +112,23 @@ def create_point_management_controls():
 
     with col2:
         if st.button("Remove Last Point", key="remove_last_point"):
-            if st.session_state.points:
-                removed_point = st.session_state.points.pop()
+            try:
+                st.session_state.points.pop()
                 st.rerun()
+            except IndexError:
+                # No points to remove
+                pass
 
     with col3:
         if st.button("Clear All Points", key="clear_all_points_quick"):
-            if st.session_state.points:
+            try:
                 from click_to_geojson_functionality import reset_points
 
                 reset_points()
-            st.rerun()
+                st.rerun()
+            except Exception:
+                # No points to clear or other error
+                pass
 
 
 def create_point_table():
@@ -153,8 +162,6 @@ def create_point_table():
 
             points_data.append(row_data)
 
-        import pandas as pd
-
         df = pd.DataFrame(points_data)
 
         # Show all columns except Index
@@ -178,16 +185,22 @@ def create_point_table():
         )
 
         # Handle row selection for deletion
-        if "points_table" in st.session_state:
+        try:
             selected_rows = st.session_state.points_table.get("selected_rows", [])
             if selected_rows:
                 # Delete selected points (in reverse order to maintain indices)
                 for row in reversed(selected_rows):
-                    if "Index" in row:
+                    try:
                         index_to_remove = row["Index"]
                         if 0 <= index_to_remove < len(st.session_state.points):
                             st.session_state.points.pop(index_to_remove)
+                    except (KeyError, IndexError):
+                        # Invalid row data or index
+                        continue
                 st.rerun()
+        except (KeyError, AttributeError):
+            # No points_table in session state or no selected_rows
+            pass
 
 
 def render_map_interface():
