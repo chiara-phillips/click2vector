@@ -167,14 +167,13 @@ def create_point_table():
         # Show all columns except Index
         display_columns = [col for col in df.columns if col != "Index"]
 
-        # Use data editor for interactive row selection
+        # Use data editor for interactive row selection and editing
         edited_df = st.data_editor(
             df[display_columns],
             use_container_width=True,
-            num_rows="dynamic",
             key="points_table",
             column_config={
-                "Name": st.column_config.TextColumn("Name", disabled=True),
+                "Name": st.column_config.TextColumn("Name", disabled=False),
                 "Latitude": st.column_config.NumberColumn(
                     "Latitude", format="%.6f", disabled=True
                 ),
@@ -183,6 +182,15 @@ def create_point_table():
                 ),
             },
         )
+
+        # Handle name changes
+        if edited_df is not None:
+            for i, row in edited_df.iterrows():
+                try:
+                    st.session_state.points[i]["properties"]["name"] = row["Name"]
+                except IndexError:
+                    # Skip if this is the extra "add row" row
+                    pass
 
         # Handle row selection for deletion
         try:
