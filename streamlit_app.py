@@ -5,13 +5,16 @@ from streamlit_folium import st_folium
 import json
 import pandas as pd
 from datetime import datetime
-from click_to_geojson_functionality import add_point, create_geojson, reset_points
+from click_to_geojson_functionality import add_point, create_geojson, reset_points, get_base_filename, export_data, points_to_gdf
 import geopandas as gpd
 import io
 import zipfile
 from pathlib import Path
+from styling import inject_global_css, create_styled_title
+
 # Set page config
 st.set_page_config(page_title="Map to GeoJSON Exporter", layout="centered")
+inject_global_css()
 
 # Add custom CSS to reduce top margin
 st.markdown("""
@@ -42,12 +45,12 @@ if 'user_zoom' not in st.session_state:
 
 
 # Main app
-st.title("Click 2 Vector")
-st.markdown("Create and export spatial data from a few map clicks or a spreadsheet.")
+create_styled_title("Click 2 Vector", align="center")
+st.markdown("<p style='text-align: center; color: grey;'>Create and export spatial point data from a few map clicks or a spreadsheet.</p>", unsafe_allow_html=True)
 
 # Google Sheets URL input
 sheets_url = st.text_input(
-    "Or, enter a public Google Sheets URL with `wkt_geom` or `latitude` and `longitude` columns:",
+    "Public Google Sheets URL with `wkt_geom` or `Latitude` and `Longitude` columns:",
     placeholder="https://docs.google.com/spreadsheets/d/...",
     key="sheets_url_input"
 )
@@ -64,7 +67,7 @@ if sheets_url and sheets_url != st.session_state.get('last_sheets_url', ''):
             try:
                 # Validate Google Sheets URL format
                 if "docs.google.com/spreadsheets/d/" not in sheets_url:
-                    st.error("**Invalid Google Sheets URL format.** Please use a URL that looks like: https://docs.google.com/spreadsheets/d/SHEET_ID/edit")
+                    st.error("**Invalid Google Sheets URL format.** Please use a publicURL that looks like: https://docs.google.com/spreadsheets/d/SHEET_ID/edit")
                     st.stop()
                 
                 # Extract sheet ID from URL
@@ -98,22 +101,9 @@ if sheets_url and sheets_url != st.session_state.get('last_sheets_url', ''):
                         st.error("**Empty Google Sheet.** Please add some data with coordinates")
                         st.stop()
                     
-                    # Check if sheet has data
-                    if len(df) == 0:
-                        st.error("No data found in the Google Sheet")
-                        st.stop()
-                    
                     # Remove completely empty rows
                     df = df.dropna(how='all')
-                    
-                    # Check if we have any data after removing empty rows
-                    if len(df) == 0:
-                        st.error("**No valid data found.** The sheet contains only empty rows")
-                        st.stop()
-                    
-                    # Debug info
-                    st.info(f"📊 Found {len(df)} rows of data with columns: {', '.join(df.columns)}")
-                    
+
                     # Find WKT geometry column or lat/lon columns
                     wkt_col = None
                     lat_col = None
@@ -134,9 +124,9 @@ if sheets_url and sheets_url != st.session_state.get('last_sheets_url', ''):
                         st.stop()
                     else:
                         if wkt_col:
-                            st.success(f"✅ Found WKT column: {wkt_col}")
+                            st.success(f"Found WKT column: {wkt_col}")
                         if lat_col and lon_col:
-                            st.success(f"✅ Found coordinate columns: {lat_col} and {lon_col}")
+                            st.success(f"Found coordinate columns: {lat_col} and {lon_col}")
                     
                     if wkt_col is not None:
                         for i, row in df.iterrows():
@@ -158,7 +148,7 @@ if sheets_url and sheets_url != st.session_state.get('last_sheets_url', ''):
                                         # Add point with all properties
                                         add_point(lat, lon, properties)
                                         added_count += 1
-                                        st.info(f"✅ Added point {added_count}: lat={lat}, lon={lon}")
+                                        st.info(f"Added point {added_count}: lat={lat}, lon={lon}")
                                     except ValueError:
                                         errors.append(f"Row {i+2}: Invalid coordinates in WKT - {wkt_text}")
                                 else:
@@ -180,7 +170,7 @@ if sheets_url and sheets_url != st.session_state.get('last_sheets_url', ''):
                                 # Add point with all properties
                                 add_point(lat, lon, properties)
                                 added_count += 1
-                                st.info(f"✅ Added point {added_count}: lat={lat}, lon={lon}")
+                                st.info(f"Added point {added_count}: lat={lat}, lon={lon}")
                             except ValueError:
                                 errors.append(f"Row {i+2}: Invalid coordinates - lat: {row[lat_col]}, lon: {row[lon_col]}")
                     else:
@@ -262,7 +252,6 @@ for i, point in enumerate(st.session_state.points):
         location=[coords[1], coords[0]],  # Note: folium uses [lat, lon]
         tooltip=f"Point {i + 1}: {point['properties']['name']}"
     ).add_to(m)
-
 # Display the map and capture clicks
 map_data = st_folium(
     m,
@@ -296,15 +285,15 @@ if map_data["last_clicked"]:
 # Only show controls if points exist
 if st.session_state.points:
     # Quick removal buttons
-    col1, col2 = st.columns(2)
+    col1, col2, col3, col4 = st.columns([1.5, 2, 2, 1])
 
-    with col1:
+    with col2:
         if st.button("Remove Last Point", key="remove_last_point"):
             if st.session_state.points:
                 removed_point = st.session_state.points.pop()
                 st.rerun()
 
-    with col2:
+    with col3:
         if st.button("Clear All Points", key="clear_all_points_quick"):
             if st.session_state.points:
                 reset_points()
@@ -361,155 +350,6 @@ if st.session_state.points:
                             st.session_state.points.pop(index_to_remove)
                 st.rerun()
 
-def points_to_gdf(points):
-    """Convert session points (GeoJSON features) to a GeoDataFrame."""
-    if not points:
-        return gpd.GeoDataFrame()
-    
-    # Always use the Shapely approach to avoid numpy compatibility issues
-    from shapely.geometry import Point
-    
-    geometries = []
-    properties_list = []
-    
-    for pt in points:
-        lon, lat = pt["geometry"]["coordinates"]
-        geometries.append(Point(lon, lat))
-        properties_list.append(pt["properties"].copy())
-    
-    gdf = gpd.GeoDataFrame(
-        properties_list,
-        geometry=geometries,
-        crs="EPSG:4326"
-    )
-    
-    return gdf
-
-
-def get_base_filename():
-    """Generate base filename with timestamp."""
-    return f"points_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-
-def export_data(gdf, export_type):
-    """Export GeoDataFrame to the specified format."""
-    if export_type == "GeoJSON":
-        return json.dumps(create_geojson(), indent=2)
-    elif export_type == "Esri Shapefile (.zip)":
-        try:
-            import tempfile
-            import fiona
-            from shapely.geometry import Point
-            
-            shp_buffer = io.BytesIO()
-            with zipfile.ZipFile(shp_buffer, mode="w") as zf:
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    tmp_path = Path(tmpdir)
-                    
-                    # Create schema for shapefile
-                    schema = {
-                        'geometry': 'Point',
-                        'properties': {}
-                    }
-                    
-                    # Add properties to schema
-                    if st.session_state.points:
-                        sample_props = st.session_state.points[0]["properties"]
-                        for key, value in sample_props.items():
-                            if isinstance(value, str):
-                                schema['properties'][key] = 'str:255'
-                            elif isinstance(value, (int, float)):
-                                schema['properties'][key] = 'float'
-                            else:
-                                schema['properties'][key] = 'str:255'
-                    
-                    # Write shapefile using fiona directly
-                    with fiona.open(
-                        tmp_path / "points.shp",
-                        'w',
-                        driver='ESRI Shapefile',
-                        schema=schema,
-                        crs='EPSG:4326'
-                    ) as dst:
-                        for point in st.session_state.points:
-                            lon, lat = point["geometry"]["coordinates"]
-                            feature = {
-                                'geometry': {
-                                    'type': 'Point',
-                                    'coordinates': [lon, lat]
-                                },
-                                'properties': point["properties"]
-                            }
-                            dst.write(feature)
-                    
-                    # Add all shapefile files to zip
-                    for file_path in tmp_path.iterdir():
-                        zf.write(file_path, arcname=file_path.name)
-            
-            shp_buffer.seek(0)
-            return shp_buffer.getvalue()
-            
-        except Exception as e:
-            st.error(f"Error exporting Shapefile: {str(e)}")
-            return b""
-    elif export_type == "FlatGeobuf":
-        try:
-            import tempfile
-            import fiona
-            
-            fgb_buffer = io.BytesIO()
-            
-            # Create schema for flatgeobuf
-            schema = {
-                'geometry': 'Point',
-                'properties': {}
-            }
-            
-            # Add properties to schema
-            if st.session_state.points:
-                sample_props = st.session_state.points[0]["properties"]
-                for key, value in sample_props.items():
-                    if isinstance(value, str):
-                        schema['properties'][key] = 'str:255'
-                    elif isinstance(value, (int, float)):
-                        schema['properties'][key] = 'float'
-                    else:
-                        schema['properties'][key] = 'str:255'
-            
-            # Write flatgeobuf using temporary file then read into buffer
-            with tempfile.TemporaryDirectory() as tmpdir:
-                tmp_path = Path(tmpdir) / "points.fgb"
-                
-                with fiona.open(
-                    str(tmp_path),
-                    'w',
-                    driver='FlatGeobuf',
-                    schema=schema,
-                    crs='EPSG:4326'
-                ) as dst:
-                    for point in st.session_state.points:
-                        lon, lat = point["geometry"]["coordinates"]
-                        feature = {
-                            'geometry': {
-                                'type': 'Point',
-                                'coordinates': [lon, lat]
-                            },
-                            'properties': point["properties"]
-                        }
-                        dst.write(feature)
-                
-                # Read the file back into the buffer
-                with open(tmp_path, 'rb') as f:
-                    fgb_buffer.write(f.read())
-            
-            fgb_buffer.seek(0)
-            return fgb_buffer.getvalue()
-            
-        except Exception as e:
-            st.error(f"Error exporting FlatGeobuf: {str(e)}")
-            return b""
-    else:
-        return b""
 
 # Only show export options if points exist
 if st.session_state.points:
@@ -522,16 +362,29 @@ if st.session_state.points:
         key="export_type_radio"
     )
 
+    # Custom filename input
+    default_filename = get_base_filename()
+    custom_filename = st.text_input(
+        "Filename (optional):",
+        value=default_filename,
+        placeholder="Enter custom filename or use default",
+    )
+    
+    # Use custom filename if provided, otherwise use default
+    if custom_filename.strip():
+        filename = custom_filename.strip()
+    else:
+        filename = default_filename
+
     geojson_data = create_geojson()
     gdf = points_to_gdf(st.session_state.points)
 
     export_label = "Download Vector"
 
-    base_filename = get_base_filename()
     export_filename = {
-        "GeoJSON": f"{base_filename}.geojson",
-        "Esri Shapefile (.zip)": f"{base_filename}.zip",
-        "FlatGeobuf": f"{base_filename}.fgb"
+        "GeoJSON": f"{filename}.geojson",
+        "Esri Shapefile (.zip)": f"{filename}.zip",
+        "FlatGeobuf": f"{filename}.fgb"
     }[export_type]
 
     export_mime = {
@@ -549,12 +402,14 @@ if st.session_state.points:
         st.session_state.message = None  # Clear the message
 
     # Show download button
-    if st.download_button(
-        label=export_label,
-        data=export_data(gdf, export_type),
-        file_name=export_filename,
-        mime=export_mime,
-        type="primary"
-    ):
-        # This block executes when the button is clicked
-        st.success("Export completed!")
+    col1, col2, col3 = st.columns([2, 2, 1])
+    with col2:
+        if st.download_button(
+            label=export_label,
+            data=export_data(gdf, export_type),
+            file_name=export_filename,
+            mime=export_mime,
+            type="primary"
+        ):
+            # This block executes when the button is clicked
+            st.success("Export completed!")
