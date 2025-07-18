@@ -5,6 +5,9 @@ import json
 import io
 import zipfile
 from pathlib import Path
+import tempfile
+import fiona
+from shapely.geometry import Point
 
 
 def add_point(lat, lon, name_or_properties=""):
@@ -85,10 +88,6 @@ def export_data(gdf, export_type):
         return json.dumps(create_geojson(), indent=2)
     elif export_type == "Esri Shapefile (.zip)":
         try:
-            import tempfile
-            import fiona
-            from shapely.geometry import Point
-            
             shp_buffer = io.BytesIO()
             with zipfile.ZipFile(shp_buffer, mode="w") as zf:
                 with tempfile.TemporaryDirectory() as tmpdir:
@@ -142,9 +141,6 @@ def export_data(gdf, export_type):
             return b""
     elif export_type == "FlatGeobuf":
         try:
-            import tempfile
-            import fiona
-            
             fgb_buffer = io.BytesIO()
             
             # Create schema for flatgeobuf
