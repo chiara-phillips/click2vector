@@ -14,10 +14,12 @@ def create_map_with_features():
     folium.Map
         A configured folium map with search and mini-map features.
     """
-    # Default to Berlin, but the map will maintain user's position
+    # Get the user's last map view, or use a reasonable default
+    last_view = st.session_state.get("last_map_view", {"center": [0, 0], "zoom": 1})
+
     map_object = folium.Map(
-        location=[52.5200, 13.4050],  # Default center
-        zoom_start=10,  # Default zoom
+        location=last_view["center"],
+        zoom_start=last_view["zoom"],
         tiles="OpenStreetMap",
     )
 
@@ -231,9 +233,15 @@ def render_map_interface():
         width=750,
         height=300,
         returned_objects=["last_clicked"],
-        key="map",
         use_container_width=True,
     )
+
+    # Store the current map view for next render
+    if map_data and "center" in map_data and "zoom" in map_data:
+        st.session_state.last_map_view = {
+            "center": map_data["center"],
+            "zoom": map_data["zoom"],
+        }
 
     # Handle map clicks
     new_point_added = handle_map_clicks(map_data)
