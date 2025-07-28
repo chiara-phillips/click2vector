@@ -18,25 +18,6 @@ from styling import create_styled_title, inject_global_css
 st.set_page_config(page_title="Map to GeoJSON Exporter", layout="centered")
 inject_global_css()
 
-# Add custom CSS to reduce top margin
-st.markdown(
-    """
-<style>
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 5rem;
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
-        max-width: 1200px;
-    }
-    .main .block-container {
-        padding-top: 1rem;
-    }
-</style>
-""",
-    unsafe_allow_html=True,
-)
-
 # Initialize session state for storing points
 if "points" not in st.session_state:
     st.session_state.points = []
@@ -47,13 +28,6 @@ if "message" not in st.session_state:
 
 
 # Main app
-create_styled_title("Click 2 Vector", align="center")
-st.markdown(
-    "<p style='text-align: center; color: grey;'>Create and export spatial point data "
-    "from a few map clicks or a spreadsheet.</p>",
-    unsafe_allow_html=True,
-)
-
 # Google Sheets URL input
 sheets_url = st.text_input(
     "Public Google Sheets URL with `wkt_geom` or `Latitude` and `Longitude` columns:",
@@ -140,10 +114,3 @@ if st.session_state.points:
         ):
             # This block executes when the button is clicked
             st.success("Export completed!")
-
-st.divider()
-st.markdown(
-    "More info and ⭐ at "
-    "[github.com/chiara-phillips/click2vector]"
-    "(https://github.com/chiara-phillips/click2vector)"
-)
