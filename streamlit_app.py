@@ -75,19 +75,25 @@ if st.session_state.points:
         key="export_type_radio",
     )
 
-    # Custom filename input
-    default_filename = get_base_filename()
+    # Custom filename input - store in session state to persist across reruns
+    if "custom_filename" not in st.session_state:
+        st.session_state.custom_filename = get_base_filename()
+
     custom_filename = st.text_input(
         "Filename (optional):",
-        value=default_filename,
-        placeholder="Enter custom filename or use default",
+        value=st.session_state.custom_filename,
+        placeholder="Enter custom filename",
+        key="filename_input",
     )
 
-    # Use custom filename if provided, otherwise use default
-    if custom_filename.strip():
+    # Update session state with the current input value
+    st.session_state.custom_filename = custom_filename
+
+    # Use custom filename if provided and different from default, otherwise use default
+    if custom_filename.strip() and custom_filename.strip() != get_base_filename():
         filename = custom_filename.strip()
     else:
-        filename = default_filename
+        filename = get_base_filename()
 
     geojson_data = create_geojson()
     gdf = points_to_gdf(st.session_state.points)
@@ -120,12 +126,10 @@ if st.session_state.points:
     # Show download button
     col1, col2, col3 = st.columns([2, 2, 1])
     with col2:
-        if st.download_button(
+        st.download_button(
             label=export_label,
             data=export_data(gdf, export_type),
             file_name=export_filename,
             mime=export_mime,
             type="primary",
-        ):
-            # This block executes when the button is clicked
-            st.success("Export completed!")
+        )
