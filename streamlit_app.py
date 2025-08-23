@@ -29,10 +29,10 @@ if "message" not in st.session_state:
 
 # Main app
 # Coordinate format selection
-col1, col2 = st.columns([1, 1])
+col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     coordinate_format = st.radio(
-        "Coordinate format to import from your Google Sheet:",
+        "Coordinate format to import from Google Sheet (if applicable):",
         options=["Lat/Long", "WKT Geometry"],
         index=0,  # Default to Lat/Long
         horizontal=True,
@@ -44,7 +44,7 @@ with col2:
 with col1:
     # Google Sheets URL input
     sheets_url = st.text_input(
-        f"Public Google Sheets URL with {column_text}:",
+        f"Public Google Sheet URL with {column_text} (if applicable):",
         placeholder="https://docs.google.com/spreadsheets/d/...",
         key="sheets_url_input",
     )
@@ -59,13 +59,13 @@ if sheets_url and sheets_url != st.session_state.get("last_sheets_url", ""):
     success = import_from_google_sheets(sheets_url, use_wkt)
     if success:
         st.rerun()
-
-basemap_name = st.radio(
-    "Basemap options:",
-    options=["CartoDB Positron", "OpenStreetMap"],
-    index=0,
-    horizontal=True,
-)
+with col3:
+    basemap_name = st.radio(
+        "Basemap options:",
+        options=["CartoDB Positron", "OpenStreetMap"],
+        index=0,
+        horizontal=True,
+    )
 
 # Render the map interface using the new module
 render_map_interface(basemap_name)
@@ -74,24 +74,25 @@ render_map_interface(basemap_name)
 # Only show export options if points exist
 if st.session_state.points:
     # Export file type selection
-    export_type = st.radio(
-        "Choose export file type:",
-        options=["GeoJSON", "Esri Shapefile (.zip)", "FlatGeobuf"],
-        index=0,
-        horizontal=True,
-        key="export_type_radio",
-    )
-
+    col1, col2 = st.columns([1.5, 1])
+    with col1:
+        export_type = st.radio(
+            "Export file type:",
+            options=["GeoJSON", "Esri Shapefile (.zip)", "FlatGeobuf"],
+            index=0,
+            horizontal=True,
+            key="export_type_radio",
+        )
     # Custom filename input - store in session state to persist across reruns
     if "custom_filename" not in st.session_state:
         st.session_state.custom_filename = get_base_filename()
-
-    custom_filename = st.text_input(
-        "Filename (optional):",
-        value=st.session_state.custom_filename,
-        placeholder="Enter custom filename",
-        key="filename_input",
-    )
+    with col2:
+        custom_filename = st.text_input(
+            "Export file name:",
+            value=st.session_state.custom_filename,
+            placeholder="Enter export file name",
+            key="filename_input",
+        )
 
     # Update session state with the current input value
     st.session_state.custom_filename = custom_filename
@@ -104,8 +105,6 @@ if st.session_state.points:
 
     geojson_data = create_geojson()
     gdf = points_to_gdf(st.session_state.points)
-
-    export_label = "Download Vector"
 
     export_filename = {
         "GeoJSON": f"{filename}.geojson",
@@ -134,7 +133,7 @@ if st.session_state.points:
     col1, col2, col3 = st.columns([2, 2, 1])
     with col2:
         st.download_button(
-            label=export_label,
+            label="Download Vector",
             data=export_data(gdf, export_type),
             file_name=export_filename,
             mime=export_mime,

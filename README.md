@@ -97,6 +97,8 @@ All dependencies are specified in `requirements.txt` for easy installation.
 ```
 
 ## CHANGELOG
+`0.6.0` : 2025-08-23
+- Added columns to input and output UI to shorten scroll space in the app.
 
 `0.5.0` : 2025-08-23
 - Added ability for the user to select different basemap options (CartoDB Positron, OpenStreetMap)
