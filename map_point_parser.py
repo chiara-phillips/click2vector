@@ -6,8 +6,13 @@ from streamlit_folium import st_folium
 from click_to_geojson_functionality import add_point
 
 
-def create_map_with_features():
+def create_map_with_features(basemap_name):
     """Create a folium map with search and mini-map features.
+
+    Parameters
+    ----------
+    basemap_name : str
+        The name of the basemap to use.
 
     Returns
     -------
@@ -20,7 +25,7 @@ def create_map_with_features():
     map_object = folium.Map(
         location=last_view["center"],
         zoom_start=last_view["zoom"],
-        tiles="Cartodb Positron",
+        tiles=basemap_name,
     )
 
     # Add search functionality (pan only, no markers)
@@ -35,7 +40,7 @@ def create_map_with_features():
 
     # Add an inset map (mini map)
     mini_map = folium.plugins.MiniMap(
-        tile_layer="Cartodb Positron",
+        tile_layer=basemap_name,
         position="bottomright",
         width=150,
         height=150,
@@ -225,8 +230,13 @@ def create_point_table():
             pass
 
 
-def render_map_interface():
+def render_map_interface(basemap_name):
     """Main function to render the complete map interface.
+
+    Parameters
+    ----------
+    basemap_name : str
+        The name of the basemap to use.
 
     Returns
     -------
@@ -234,7 +244,7 @@ def render_map_interface():
         The map data returned from st_folium for further processing.
     """
     # Create map with features
-    map_object = create_map_with_features()
+    map_object = create_map_with_features(basemap_name)
 
     # Add existing points to map
     add_existing_points_to_map(map_object)

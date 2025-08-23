@@ -97,15 +97,23 @@ All dependencies are specified in `requirements.txt` for easy installation.
 ```
 
 ## CHANGELOG
-`0.4.0` - 2025-08-23
+
+`0.5.0` : 2025-08-23
+- Added ability for the user to select different basemap options (CartoDB Positron, OpenStreetMap, Esri World Imagery)
+
+`0.4.0` : 2025-08-23
 - Created custom point marker based on branding.
-`0.3.1` - 2025-08-23
+
+`0.3.1` : 2025-08-23
 - Fixed bug that ignored user filename input.
-`0.3.0` - 2025-08-23
+
+`0.3.0` : 2025-08-23
 - Adjusted basemap tiles from `OpenStreetMap` to `Cartodb Positron`
-`0.2.0` - 2025-08-23
+
+`0.2.0` : 2025-08-23
 - Added radio button for specifying which coordinate type to import from Google Sheets.
-`0.1.0` - 2025-07-16
+
+`0.1.0` : 2025-07-16
 - Initial release
 
 
