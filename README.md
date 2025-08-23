@@ -97,6 +97,8 @@ All dependencies are specified in `requirements.txt` for easy installation.
 ```
 
 ## CHANGELOG
+`0.3.1` - 2025-08-23
+- Fixed bug that ignored user filename input.
 `0.3.0` - 2025-08-23
 - Adjusted basemap tiles from `OpenStreetMap` to `Cartodb Positron`
 `0.2.0` - 2025-08-23
