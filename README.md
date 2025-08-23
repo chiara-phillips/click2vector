@@ -97,6 +97,8 @@ All dependencies are specified in `requirements.txt` for easy installation.
 ```
 
 ## CHANGELOG
+`0.4.0` - 2025-08-23
+- Created custom point marker based on branding.
 `0.3.1` - 2025-08-23
 - Fixed bug that ignored user filename input.
 `0.3.0` - 2025-08-23
