@@ -275,7 +275,7 @@ def import_from_google_sheets(sheets_url, use_wkt=True):
                         f"{', '.join(df.columns)}. Looking for columns containing "
                         "'wkt' or 'geom'. "
                         "Please ensure your sheet has a WKT geometry column "
-                        "or toggle to use lat/lon columns instead."
+                        "or use lat/lon columns instead."
                     )
                     return False
                 st.success(f"Found WKT column: {wkt_col}")
