@@ -99,7 +99,7 @@ All dependencies are specified in `requirements.txt` for easy installation.
 ## CHANGELOG
 
 `0.5.0` : 2025-08-23
-- Added ability for the user to select different basemap options (CartoDB Positron, OpenStreetMap, Esri World Imagery)
+- Added ability for the user to select different basemap options (CartoDB Positron, OpenStreetMap)
 
 `0.4.0` : 2025-08-23
 - Created custom point marker based on branding.

@@ -62,7 +62,7 @@ if sheets_url and sheets_url != st.session_state.get("last_sheets_url", ""):
 
 basemap_name = st.radio(
     "Basemap options:",
-    options=["CartoDB Positron", "OpenStreetMap", "Esri World Imagery"],
+    options=["CartoDB Positron", "OpenStreetMap"],
     index=0,
     horizontal=True,
 )
