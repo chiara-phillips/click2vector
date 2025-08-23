@@ -28,12 +28,27 @@ if "message" not in st.session_state:
 
 
 # Main app
-# Google Sheets URL input
-sheets_url = st.text_input(
-    "Public Google Sheets URL with `wkt_geom` or `Latitude` and `Longitude` columns:",
-    placeholder="https://docs.google.com/spreadsheets/d/...",
-    key="sheets_url_input",
-)
+# Coordinate format selection
+col1, col2 = st.columns([1, 1])
+with col2:
+    coordinate_format = st.radio(
+        "Coordinate format to import from your Google Sheet:",
+        options=["Lat/Long", "WKT Geometry"],
+        index=0,  # Default to Lat/Long
+        horizontal=True,
+    )
+
+    # Convert radio selection to boolean for the function
+    use_wkt = coordinate_format == "WKT Geometry"
+    column_text = "a `wkt_geom` column" if use_wkt else "`lat` and `long` columns"
+with col1:
+    # Google Sheets URL input
+    sheets_url = st.text_input(
+        f"Public Google Sheets URL with {column_text}:",
+        placeholder="https://docs.google.com/spreadsheets/d/...",
+        key="sheets_url_input",
+    )
+
 
 # Check if URL was entered and is different from last time
 if sheets_url and sheets_url != st.session_state.get("last_sheets_url", ""):
@@ -41,7 +56,7 @@ if sheets_url and sheets_url != st.session_state.get("last_sheets_url", ""):
     st.session_state.last_sheets_url = sheets_url
 
     # Import from Google Sheets using the new module
-    success = import_from_google_sheets(sheets_url)
+    success = import_from_google_sheets(sheets_url, use_wkt)
     if success:
         st.rerun()
 

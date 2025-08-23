@@ -82,13 +82,15 @@ def load_sheet_data(csv_url):
         raise Exception(f"Could not access Google Sheet: {e}")
 
 
-def find_coordinate_columns(df):
+def find_coordinate_columns(df, use_wkt=True):
     """Find WKT geometry column or lat/lon columns in the dataframe.
 
     Parameters
     ----------
     df : pandas.DataFrame
         The DataFrame to search for coordinate columns.
+    use_wkt : bool
+        If True, search for WKT geometry column. If False, search for lat/lon columns.
 
     Returns
     -------
@@ -96,17 +98,25 @@ def find_coordinate_columns(df):
         A tuple containing (wkt_col, lat_col, lon_col) where each is either
         the column name or None if not found.
     """
-    wkt_col = next(
-        (col for col in df.columns if "wkt" in col.lower() or "geom" in col.lower()),
-        None,
-    )
-    lat_col = next((col for col in df.columns if "lat" in col.lower()), None)
-    lon_col = next(
-        (col for col in df.columns if "lon" in col.lower() or "lng" in col.lower()),
-        None,
-    )
-
-    return wkt_col, lat_col, lon_col
+    if use_wkt:
+        # Only look for WKT geometry column
+        wkt_col = next(
+            (
+                col
+                for col in df.columns
+                if "wkt" in col.lower() or "geom" in col.lower()
+            ),
+            None,
+        )
+        return wkt_col, None, None
+    else:
+        # Only look for lat/lon columns
+        lat_col = next((col for col in df.columns if "lat" in col.lower()), None)
+        lon_col = next(
+            (col for col in df.columns if "lon" in col.lower() or "lng" in col.lower()),
+            None,
+        )
+        return None, lat_col, lon_col
 
 
 def parse_wkt_point(wkt_text):
@@ -225,13 +235,15 @@ def process_lat_lon_columns(df, lat_col, lon_col):
     return added_count, errors
 
 
-def import_from_google_sheets(sheets_url):
+def import_from_google_sheets(sheets_url, use_wkt=True):
     """Main function to import data from Google Sheets.
 
     Parameters
     ----------
     sheets_url : str
         The Google Sheets URL to import data from.
+    use_wkt : bool
+        If True, expect WKT geometry column. If False, expect lat/lon columns.
 
     Returns
     -------
@@ -253,25 +265,34 @@ def import_from_google_sheets(sheets_url):
             df = df.dropna(how="all")
 
             # Find coordinate columns
-            wkt_col, lat_col, lon_col = find_coordinate_columns(df)
+            wkt_col, lat_col, lon_col = find_coordinate_columns(df, use_wkt)
 
-            # Validate we have coordinate columns
-            if not wkt_col and not (lat_col and lon_col):
-                st.error(
-                    f"**No coordinate columns found.** Available columns: "
-                    f"{', '.join(df.columns)}. Looking for columns containing "
-                    "'wkt', 'geom', 'lat', 'lon', or 'lng'"
-                )
-                return False
-
-            # Show found columns
-            if wkt_col:
+            # Validate we have the expected coordinate columns
+            if use_wkt:
+                if not wkt_col:
+                    st.error(
+                        f"**No WKT geometry column found.** Available columns: "
+                        f"{', '.join(df.columns)}. Looking for columns containing "
+                        "'wkt' or 'geom'. "
+                        "Please ensure your sheet has a WKT geometry column "
+                        "or toggle to use lat/lon columns instead."
+                    )
+                    return False
                 st.success(f"Found WKT column: {wkt_col}")
-            if lat_col and lon_col:
+            else:
+                if not lat_col or not lon_col:
+                    st.error(
+                        f"**No lat/lon columns found.** Available columns: "
+                        f"{', '.join(df.columns)}. Looking for columns containing "
+                        "'lat' and 'lon' or 'lng'. "
+                        "Please ensure your sheet has latitude "
+                        "and longitude columns or use WKT geometry instead."
+                    )
+                    return False
                 st.success(f"Found coordinate columns: {lat_col} and {lon_col}")
 
             # Process data based on column type
-            if wkt_col:
+            if use_wkt:
                 added_count, errors = process_wkt_column(df, wkt_col)
             else:
                 added_count, errors = process_lat_lon_columns(df, lat_col, lon_col)
