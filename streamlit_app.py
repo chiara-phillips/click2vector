@@ -60,8 +60,15 @@ if sheets_url and sheets_url != st.session_state.get("last_sheets_url", ""):
     if success:
         st.rerun()
 
+basemap_name = st.radio(
+    "Basemap options:",
+    options=["CartoDB Positron", "OpenStreetMap", "Esri World Imagery"],
+    index=0,
+    horizontal=True,
+)
+
 # Render the map interface using the new module
-render_map_interface()
+render_map_interface(basemap_name)
 
 
 # Only show export options if points exist
