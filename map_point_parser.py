@@ -61,12 +61,24 @@ def add_existing_points_to_map(map_object):
     None
         Adds markers for all existing points to the map.
     """
+    custom_icon = folium.DivIcon(
+        html=f"""
+        <div style="
+            background-color:#f75f61;
+            width:16px;
+            height:16px;
+            border-radius:50%;
+            border:2px solid white;">
+        </div>
+        """
+    )
     for point_index, point in enumerate(st.session_state.points):
         coords = point["geometry"]["coordinates"]
 
         folium.Marker(
             location=[coords[1], coords[0]],  # Note: folium uses [lat, lon]
             tooltip=f"Point {point_index + 1}: {point['properties']['name']}",
+            icon=custom_icon,
         ).add_to(map_object)
 
 
