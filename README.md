@@ -97,6 +97,8 @@ All dependencies are specified in `requirements.txt` for easy installation.
 ```
 
 ## CHANGELOG
+`0.3.0` - 2025-08-23
+- Adjusted basemap tiles from `OpenStreetMap` to `Cartodb Positron`
 `0.2.0` - 2025-08-23
 - Added radio button for specifying which coordinate type to import from Google Sheets.
 `0.1.0` - 2025-07-16

@@ -20,7 +20,7 @@ def create_map_with_features():
     map_object = folium.Map(
         location=last_view["center"],
         zoom_start=last_view["zoom"],
-        tiles="OpenStreetMap",
+        tiles="Cartodb Positron",
     )
 
     # Add search functionality (pan only, no markers)
@@ -35,7 +35,7 @@ def create_map_with_features():
 
     # Add an inset map (mini map)
     mini_map = folium.plugins.MiniMap(
-        tile_layer="OpenStreetMap",
+        tile_layer="Cartodb Positron",
         position="bottomright",
         width=150,
         height=150,
