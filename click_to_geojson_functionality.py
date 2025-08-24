@@ -243,6 +243,20 @@ def _export_flatgeobuf():
         return b""
 
 
+def _export_geojson_display():
+    """Export data as GeoJSON in pretty-printed format for display.
+
+    Returns
+    -------
+    str
+        The GeoJSON data as a formatted string ready for display.
+    """
+    # Create the GeoJSON with pretty formatting for display
+    geojson_data = create_geojson()
+    # Use pretty formatting for easy reading
+    return json.dumps(geojson_data, indent=2)
+
+
 def export_data(gdf, export_type):
     """Export GeoDataFrame to the specified format.
 
@@ -260,7 +274,7 @@ def export_data(gdf, export_type):
     """
     # Use a mapping instead of if/elif chains
     export_functions = {
-        "GeoJSON": lambda: json.dumps(create_geojson(), indent=2),
+        "GeoJSON": _export_geojson_display,
         "Esri Shapefile (.zip)": _export_shapefile,
         "FlatGeobuf": _export_flatgeobuf,
     }

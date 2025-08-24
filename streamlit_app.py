@@ -87,13 +87,13 @@ if st.session_state.points:
     # Custom filename input - store in session state to persist across reruns
     if "custom_filename" not in st.session_state:
         st.session_state.custom_filename = get_base_filename()
-    with col2:
-        custom_filename = st.text_input(
-            "Export file name:",
-            value=st.session_state.custom_filename,
-            placeholder="Enter export file name",
-            key="filename_input",
-        )
+
+    custom_filename = st.text_input(
+        "Export file name:",
+        value=st.session_state.custom_filename,
+        placeholder="Enter export file name",
+        key="filename_input",
+    )
 
     # Update session state with the current input value
     st.session_state.custom_filename = custom_filename
