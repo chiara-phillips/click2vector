@@ -97,6 +97,9 @@ All dependencies are specified in `requirements.txt` for easy installation.
 ```
 
 ## CHANGELOG
+`0.7.0` : 2025-08-24
+- Added GeoJSON pretty print format with GeoJSON export option.
+
 `0.6.0` : 2025-08-23
 - Added columns to input and output UI to shorten scroll space in the app.
 

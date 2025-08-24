@@ -74,25 +74,24 @@ render_map_interface(basemap_name)
 # Only show export options if points exist
 if st.session_state.points:
     # Export file type selection
-    col1, col2 = st.columns([1.5, 1])
-    with col1:
-        export_type = st.radio(
-            "Export file type:",
-            options=["GeoJSON", "Esri Shapefile (.zip)", "FlatGeobuf"],
-            index=0,
-            horizontal=True,
-            key="export_type_radio",
-        )
+    export_type = st.radio(
+        "Export file type:",
+        options=["GeoJSON", "Esri Shapefile (.zip)", "FlatGeobuf"],
+        index=0,
+        horizontal=True,
+        key="export_type_radio",
+    )
+
     # Custom filename input - store in session state to persist across reruns
     if "custom_filename" not in st.session_state:
         st.session_state.custom_filename = get_base_filename()
-    with col2:
-        custom_filename = st.text_input(
-            "Export file name:",
-            value=st.session_state.custom_filename,
-            placeholder="Enter export file name",
-            key="filename_input",
-        )
+
+    custom_filename = st.text_input(
+        "Export file name:",
+        value=st.session_state.custom_filename,
+        placeholder="Enter export file name",
+        key="filename_input",
+    )
 
     # Update session state with the current input value
     st.session_state.custom_filename = custom_filename
@@ -108,12 +107,14 @@ if st.session_state.points:
 
     export_filename = {
         "GeoJSON": f"{filename}.geojson",
+        "GeoJSON.io": f"{filename}.geojson",
         "Esri Shapefile (.zip)": f"{filename}.zip",
         "FlatGeobuf": f"{filename}.fgb",
     }[export_type]
 
     export_mime = {
         "GeoJSON": "application/geo+json",
+        "GeoJSON.io": "text/plain",
         "Esri Shapefile (.zip)": "application/zip",
         "FlatGeobuf": "application/octet-stream",
     }[export_type]
@@ -132,6 +133,7 @@ if st.session_state.points:
     # Show download button
     col1, col2, col3 = st.columns([2, 2, 1])
     with col2:
+        # Single download button for all formats
         st.download_button(
             label="Download Vector",
             data=export_data(gdf, export_type),
@@ -139,3 +141,7 @@ if st.session_state.points:
             mime=export_mime,
             type="primary",
         )
+    # Show GeoJSON code block if that format is selected
+    if export_type == "GeoJSON":
+        geojson_data = export_data(gdf, export_type)
+        st.code(geojson_data, language="json")
