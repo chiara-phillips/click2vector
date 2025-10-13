@@ -147,3 +147,17 @@ if st.session_state.points:
     if export_type == "GeoJSON":
         geojson_data = export_data(gdf, export_type)
         st.code(geojson_data, language="json")
+
+    st.markdown(
+        """
+    <style>
+
+           /* Remove blank space at bottom */
+           .block-container {
+               padding-bottom: 0.2rem;
+            }
+
+    </style>
+    """,
+        unsafe_allow_html=True,
+    )

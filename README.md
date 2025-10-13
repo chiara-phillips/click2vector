@@ -1,6 +1,9 @@
 # Click 2 Vector
 
-An interactive Streamlit application for creating and exporting geographic points as multiple vector formats. Click on a map, import from Google Sheets, or enter coordinates manually to build your dataset, then export it for use in GIS software, web maps, or other spatial applications.
+An interactive Streamlit application for creating and exporting geographic points as
+multiple vector formats. Click on a map, import from Google Sheets, or enter coordinates
+ manually to build your dataset, then export it for use in GIS software, web maps, or
+ other spatial applications.
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://click2vector.streamlit.app/)
 
@@ -66,37 +69,15 @@ Your Google Sheet should have either:
 
 ### Managing Your Data
 - **View Points**: Expand the "Point Table" to see all your points in an interactive table
-- **Delete Points**: Remove individual points by selecting rows in the table, or use the "Remove Last Point" and "Clear All Points" buttons
+- **Delete Points**: Remove individual points by selecting rows in the table, or use the
+ "Remove Last Point" and "Clear All Points" buttons
 - **Export Data**: Choose from multiple formats and download your complete dataset
 
-### Export Formats
-- **GeoJSON**: Standard GeoJSON format for web applications and GIS software
-- **Esri Shapefile (.zip)**: Compressed shapefile format for ArcGIS and other GIS applications
-- **FlatGeobuf**: Efficient binary format for large datasets
-
-## Dependencies
-
-- **streamlit==1.47.0**: Web application framework
-- **folium==0.20.0**: Interactive map creation with plugins
-- **streamlit-folium==0.25.0**: Streamlit integration for folium maps
-- **pandas==2.3.1**: Data manipulation and display
-- **geopandas==0.13.2**: Geospatial data handling (includes fiona and shapely)
-
-All dependencies are specified in `requirements.txt` for easy installation.
-
-## Project Structure
-
-```
-├── streamlit_app.py                    # Main Streamlit application
-├── click_to_geojson_functionality.py   # Core GeoJSON and export functions
-├── google_sheets_parser.py             # Google Sheets import functionality
-├── map_point_parser.py                 # Interactive map interface
-├── styling.py                          # Custom UI styling and components
-├── requirements.txt                    # Python dependencies
-└── README.md                           # Project documentation
-```
 
 ## CHANGELOG
+`0.8.0` : 2025-10-13
+- Remove extra below app with HTML.
+
 `0.7.0` : 2025-08-24
 - Added GeoJSON pretty print format with GeoJSON export option.
 
@@ -104,7 +85,8 @@ All dependencies are specified in `requirements.txt` for easy installation.
 - Added columns to input and output UI to shorten scroll space in the app.
 
 `0.5.0` : 2025-08-23
-- Added ability for the user to select different basemap options (CartoDB Positron, OpenStreetMap)
+- Added ability for the user to select different basemap options (CartoDB Positron,
+OpenStreetMap)
 
 `0.4.0` : 2025-08-23
 - Created custom point marker based on branding.
