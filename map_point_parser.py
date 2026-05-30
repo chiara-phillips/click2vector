@@ -20,6 +20,7 @@ NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 PHOTON_URL = "https://photon.komoot.io/api/"
 GEOCODER_APP_URL = "https://click2vector.streamlit.app/"
 USER_AGENT = f"click2vector/0.11.1 ({GEOCODER_APP_URL})"
+MAP_HEIGHT = 500
 DEFAULT_BASEMAP = "CartoDB.Positron"
 LEGACY_BASEMAP_NAMES = {
     "CartoDB Positron": "CartoDB.Positron",
@@ -647,7 +648,7 @@ def add_compact_attribution_style(map_object: folium.Map) -> None:
 
 
 def create_map_with_features(basemap_name):
-    """Create a folium map with search and mini-map features.
+    """Create a folium map with optional mini-map overlay.
 
     Parameters
     ----------
@@ -657,7 +658,7 @@ def create_map_with_features(basemap_name):
     Returns
     -------
     folium.Map
-        A configured folium map with search and mini-map features.
+        A configured folium map.
     """
     # Get the user's last map view, or use a reasonable default
     last_view = st.session_state.get("last_map_view", get_default_map_view())
@@ -667,11 +668,6 @@ def create_map_with_features(basemap_name):
         zoom_start=last_view["zoom"],
         tiles=basemap_name,
     )
-
-    folium.plugins.Fullscreen(
-        position="topright",
-        force_separate_button=True,
-    ).add_to(map_object)
 
     # Add an inset map (mini map) when enabled
     if st.session_state.get("show_inset_map", False):
@@ -1658,7 +1654,7 @@ def _render_interactive_map(basemap_name: str) -> dict | None:
 
     map_data = st_folium(
         map_object,
-        height=300,
+        height=MAP_HEIGHT,
         center=map_view["center"],
         zoom=map_view["zoom"],
         returned_objects=[
