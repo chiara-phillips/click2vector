@@ -155,7 +155,7 @@ def render_place_search() -> None:
         with search_col:
             query = st.text_input(
                 "Search for a place to add",
-                placeholder="e.g. University of California, Los Angeles",
+                placeholder="e.g. Berlin",
             )
         with button_col:
             submitted = st.form_submit_button("Add pin", type="primary")
