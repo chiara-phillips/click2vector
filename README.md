@@ -5,7 +5,7 @@ multiple vector formats. Click on a map, import from Google Sheets, or enter coo
  manually to build your dataset, then export it for use in GIS software, web maps, or
  other spatial applications.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://click2vector.streamlit.app/)
+[![Open in Streamlit](docs/streamlit_badge.svg)](https://click2vector.streamlit.app/)
 
 ## Installation & Setup
 
