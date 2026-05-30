@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "click2vector"
 version = "0.11.1"
-description = "Interactive map application for creating and exporting GeoJSON points"
-authors = ["Chiara Phillips <contact@chiaraphillips.com>"]
+description = "Click 2 Vector: interactive map for creating and exporting vector points"
+authors = ["Chiara Phillips"]
 readme = "README.md"
 package-mode = false
 

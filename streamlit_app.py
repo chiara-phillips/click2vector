@@ -1,8 +1,8 @@
-"""
-This is the main Streamlit app that combines all the functionality.
-"""
+"""Click 2 Vector Streamlit app."""
 
 import streamlit as st
+
+APP_NAME = "Click 2 Vector"
 
 from click_to_geojson_functionality import (
     build_export_filename,
@@ -20,8 +20,7 @@ from map_point_parser import (
 )
 from styling import DEFAULT_BUTTON_COLOR, inject_global_css
 
-# Set page config
-st.set_page_config(page_title="Map to GeoJSON Exporter", layout="centered")
+st.set_page_config(page_title=APP_NAME, layout="centered")
 inject_global_css()
 
 # Initialize session state for storing points
