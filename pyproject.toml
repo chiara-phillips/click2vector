@@ -1,33 +1,33 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "click2vector"
-version = "0.8.0"
+version = "0.9.0"
 description = "Interactive map application for creating and exporting GeoJSON points"
-authors = [{name = "Chiara Phillips", email = "contact@chiaraphillips.com"}]
+authors = ["Chiara Phillips <contact@chiaraphillips.com>"]
 readme = "README.md"
-requires-python = ">=3.9"
-dependencies = [
-    "streamlit>=1.47.0",
-    "folium>=0.20.0",
-    "streamlit-folium>=0.25.0",
-    "pandas>=2.3.1",
-    "geopandas>=0.13.2",
-]
+package-mode = false
 
-[project.optional-dependencies]
-dev = [
-    "pre-commit>=3.6.2",
-    "black>=24.2.0",
-    "isort>=5.13.2",
-    "flake8>=7.0.0",
-]
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+streamlit = ">=1.47.0"
+folium = ">=0.20.0"
+streamlit-folium = ">=0.27.2"
+pandas = ">=2.3.1"
+geopandas = ">=0.13.2"
+pyogrio = ">=0.7.0"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = ">=3.6.2"
+black = ">=24.2.0"
+isort = ">=5.13.2"
+flake8 = ">=7.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 88
-target-version = ['py39']
+target-version = ['py311']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -53,7 +53,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -66,8 +66,6 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
-
-
 
 [tool.flake8]
 max-line-length = 88

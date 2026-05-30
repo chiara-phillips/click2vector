@@ -10,7 +10,6 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
-import fiona
 import geopandas as gpd
 import streamlit as st
 from shapely.geometry import Point
@@ -50,6 +49,7 @@ def add_point(lat, lon, name_or_properties=""):
                 if name_or_properties
                 else f"Point {len(st.session_state.points) + 1}"
             ),
+            "description": "",
             "timestamp": datetime.now().isoformat(),
         }
 
@@ -124,38 +124,13 @@ def get_base_filename():
     return f"click2vector_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 
-def _create_schema():
-    """Create schema for export formats.
-
-    Returns
-    -------
-    dict
-        Schema dictionary for fiona export.
-    """
-    schema = {"geometry": "Point", "properties": {}}
-
-    try:
-        sample_props = st.session_state.points[0]["properties"]
-        for key, value in sample_props.items():
-            try:
-                if isinstance(value, str):
-                    schema["properties"][key] = "str:255"
-                elif isinstance(value, (int, float)):
-                    schema["properties"][key] = "float"
-                else:
-                    schema["properties"][key] = "str:255"
-            except Exception:
-                # Fallback for any property type issues
-                schema["properties"][key] = "str:255"
-    except (IndexError, KeyError):
-        # No points or no properties
-        pass
-
-    return schema
-
-
-def _export_shapefile():
+def _export_shapefile(gdf: gpd.GeoDataFrame) -> bytes:
     """Export data as shapefile.
+
+    Parameters
+    ----------
+    gdf : geopandas.GeoDataFrame
+        The GeoDataFrame to export.
 
     Returns
     -------
@@ -166,30 +141,10 @@ def _export_shapefile():
         shp_buffer = io.BytesIO()
         with zipfile.ZipFile(shp_buffer, mode="w") as shapefile_zip:
             with tempfile.TemporaryDirectory() as tmpdir:
-                tmp_path = Path(tmpdir)
-                schema = _create_schema()
+                tmp_path = Path(tmpdir) / "points.shp"
+                gdf.to_file(tmp_path, driver="ESRI Shapefile")
 
-                # Write shapefile using fiona directly
-                with fiona.open(
-                    tmp_path / "points.shp",
-                    "w",
-                    driver="ESRI Shapefile",
-                    schema=schema,
-                    crs="EPSG:4326",
-                ) as dst:
-                    for point in st.session_state.points:
-                        lon, lat = point["geometry"]["coordinates"]
-                        feature = {
-                            "geometry": {
-                                "type": "Point",
-                                "coordinates": [lon, lat],
-                            },
-                            "properties": point["properties"],
-                        }
-                        dst.write(feature)
-
-                # Add all shapefile files to zip
-                for file_path in tmp_path.iterdir():
+                for file_path in Path(tmpdir).iterdir():
                     shapefile_zip.write(file_path, arcname=file_path.name)
 
         shp_buffer.seek(0)
@@ -200,8 +155,13 @@ def _export_shapefile():
         return b""
 
 
-def _export_flatgeobuf():
+def _export_flatgeobuf(gdf: gpd.GeoDataFrame) -> bytes:
     """Export data as FlatGeobuf.
+
+    Parameters
+    ----------
+    gdf : geopandas.GeoDataFrame
+        The GeoDataFrame to export.
 
     Returns
     -------
@@ -209,34 +169,10 @@ def _export_flatgeobuf():
         The FlatGeobuf data as bytes.
     """
     try:
-        fgb_buffer = io.BytesIO()
-        schema = _create_schema()
-
-        # Write FlatGeobuf using temporary file then read into buffer
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir) / "points.fgb"
-
-            with fiona.open(
-                str(tmp_path),
-                "w",
-                driver="FlatGeobuf",
-                schema=schema,
-                crs="EPSG:4326",
-            ) as dst:
-                for point in st.session_state.points:
-                    lon, lat = point["geometry"]["coordinates"]
-                    feature = {
-                        "geometry": {"type": "Point", "coordinates": [lon, lat]},
-                        "properties": point["properties"],
-                    }
-                    dst.write(feature)
-
-            # Read the file back into the buffer
-            with open(tmp_path, "rb") as fgb_file:
-                fgb_buffer.write(fgb_file.read())
-
-        fgb_buffer.seek(0)
-        return fgb_buffer.getvalue()
+            gdf.to_file(tmp_path, driver="FlatGeobuf")
+            return tmp_path.read_bytes()
 
     except Exception as export_error:
         st.error(f"Error exporting FlatGeobuf: {str(export_error)}")
@@ -274,13 +210,13 @@ def export_data(gdf, export_type):
     """
     # Use a mapping instead of if/elif chains
     export_functions = {
-        "GeoJSON": _export_geojson_display,
+        "GeoJSON": lambda _: _export_geojson_display(),
         "Esri Shapefile (.zip)": _export_shapefile,
         "FlatGeobuf": _export_flatgeobuf,
     }
 
     try:
-        return export_functions[export_type]()
+        return export_functions[export_type](gdf)
     except KeyError:
         # Unknown export type
         return b""

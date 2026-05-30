@@ -9,12 +9,12 @@ multiple vector formats. Click on a map, import from Google Sheets, or enter coo
 
 ## Installation & Setup
 
-This project uses pip for dependency management.
+This project uses [Poetry](https://python-poetry.org/) for dependency management.
 
 ### Prerequisites
 
-- Python 3.9+ (excluding 3.9.7)
-- pip
+- Python 3.11+
+- [Poetry](https://python-poetry.org/docs/#installation)
 
 ### Installation
 
@@ -24,14 +24,14 @@ This project uses pip for dependency management.
    cd click2vector
    ```
 
-2. **Install dependencies with pip**
+2. **Install dependencies with Poetry**
    ```bash
-   pip install -r requirements.txt
+   poetry install
    ```
 
 3. **Run the application**
    ```bash
-   streamlit run streamlit_app.py
+   poetry run streamlit run streamlit_app.py
    ```
 
 4. **Open your browser** and navigate to the local URL (typically http://localhost:8501)
@@ -40,27 +40,30 @@ This project uses pip for dependency management.
 
 For development, install additional dependencies and set up pre-commit hooks:
 
-1. **Install development dependencies**
+1. **Install all dependencies (including dev)**
    ```bash
-   pip install -r requirements-dev.txt
+   poetry install
    ```
 
 2. **Install pre-commit hooks**
    ```bash
-   pre-commit install
+   poetry run pre-commit install
    ```
 
 3. **Run pre-commit on all files (optional)**
    ```bash
-   pre-commit run --all-files
+   poetry run pre-commit run --all-files
    ```
 
 ## Usage
 
 ### Adding Points
-- **Map Clicking**: Simply click anywhere on the interactive map to drop a pin
-- **Location Search**: Use the search box in the top-right corner to find specific places
+- **Map Clicking**: Click anywhere on the map to drop a pin; drag pins to adjust
+  their location
+- **Place Search**: Search for a place above the map and click **Add pin** to
+  geocode it
 - **Google Sheets Import**: Paste a public Google Sheets URL with coordinate data
+  (under Advanced options)
 
 ### Google Sheets Import
 Your Google Sheet should have either:
@@ -68,13 +71,30 @@ Your Google Sheet should have either:
 - OR separate columns with 'lat' and 'lon' (or 'lng') in their names
 
 ### Managing Your Data
-- **View Points**: Expand the "Point Table" to see all your points in an interactive table
-- **Delete Points**: Remove individual points by selecting rows in the table, or use the
- "Remove Last Point" and "Clear All Points" buttons
-- **Export Data**: Choose from multiple formats and download your complete dataset
+- **View Points**: Expand the "Point Table" to see all points in an editable table
+- **Descriptions**: Add an optional description per point; descriptions are included
+  in exports
+- **Pin Colors**: Map pins are colored by description; set a color for each unique
+  description in the Point Table
+- **Delete Points**: Select rows in the table to remove points, or use **Remove Last
+  Point** and **Clear All Points**
+- **Advanced Options**: Basemap, default pin color, inset map toggle, Google Sheets
+  import, export format, and GeoJSON preview
+- **Export Data**: Choose GeoJSON, Esri Shapefile (.zip), or FlatGeobuf and download
+  your dataset
 
 
 ## CHANGELOG
+`0.9.0` : 2026-05-30
+- Added optional description column per point, included in exports.
+- Added pin colors by description with per-value color pickers in the Point Table.
+- Added place search above the map with geocoded **Add pin** workflow.
+- Added draggable map pins.
+- Added Advanced options for basemap, pin color, inset map, Google Sheets import,
+  export format, and GeoJSON preview.
+- Added inset map toggle (off by default).
+- Raised minimum Python version to 3.11 for `streamlit-folium` compatibility.
+
 `0.8.0` : 2025-10-13
 - Remove extra below app with HTML.
 
