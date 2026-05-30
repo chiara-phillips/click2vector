@@ -20,10 +20,10 @@ NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 PHOTON_URL = "https://photon.komoot.io/api/"
 GEOCODER_APP_URL = "https://click2vector.streamlit.app/"
 USER_AGENT = f"click2vector/0.11.1 ({GEOCODER_APP_URL})"
-DEFAULT_BASEMAP = "CartoDB.PositronNoLabels"
+DEFAULT_BASEMAP = "CartoDB.Positron"
 LEGACY_BASEMAP_NAMES = {
     "CartoDB Positron": "CartoDB.Positron",
-    "OpenStreetMap": "CartoDB.PositronNoLabels",
+    "OpenStreetMap": "CartoDB.Positron",
 }
 BASEMAP_PROVIDER_GROUPS = (
     "CartoDB",
