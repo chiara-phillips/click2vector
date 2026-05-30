@@ -96,6 +96,7 @@ guidance on title rows and header placement.
 - Reorganized search, Advanced options, Point Table, and export layout.
 - Added direct row deletion in the Point Table and Enter-to-search for place lookup.
 - Removed separate point-management buttons and custom global button styling.
+- Added more basemap options
 
 `0.9.1` : 2026-05-30
 - Added `lat` and `lon` attribute columns to all export formats.
