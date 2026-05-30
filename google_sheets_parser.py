@@ -172,7 +172,9 @@ def build_missing_column_error(
             f"**Column headers were not found on row 1.** Available columns: "
             f"{columns_text}. Expected {expected} appear to start on row "
             f"{likely_header_row}. Remove title rows above your headers, or move "
-            f"the header row to row 1."
+            f"the header row to row 1. Also confirm the URL points to the correct "
+            f"sheet tab (include `#gid=...` in the link if your data is on another "
+            f"tab)."
         )
     if len(df.columns) == 1:
         expected = (
@@ -183,14 +185,17 @@ def build_missing_column_error(
         return (
             f"**No coordinate columns found on row 1.** The sheet only has one "
             f"column: {columns_text}. This often means a title row is above your "
-            f"headers. Put {expected} on row 1."
+            f"headers. Put {expected} on row 1. Also confirm the URL points to "
+            f"the correct sheet tab (include `#gid=...` in the link if your data "
+            f"is on another tab)."
         )
     expected = "`wkt` or `geom`" if use_wkt else "`lat` and `lon` or `lng`"
     return (
         f"**No {'WKT geometry' if use_wkt else 'lat/lon'} columns found.** "
         f"Available columns: {columns_text}. Looking for columns containing "
-        f"{expected}. Check the tab URL includes `#gid=...` if your data is on "
-        f"another tab, and ensure column headers are on row 1."
+        f"{expected}. Ensure column headers are on row 1. Also confirm the URL "
+        f"points to the correct sheet tab (include `#gid=...` in the link if your "
+        f"data is on another tab)."
     )
 
 

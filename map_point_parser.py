@@ -1,8 +1,10 @@
 from typing import Optional
 
 import folium
+from folium.plugins import MarkerCluster
 import hashlib
 import html
+import math
 import pandas as pd
 import requests
 import streamlit as st
@@ -15,7 +17,7 @@ from google_sheets_parser import import_from_google_sheets
 from styling import DEFAULT_BUTTON_COLOR
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-USER_AGENT = "click2vector/0.10.0"
+USER_AGENT = "click2vector/0.11.0"
 DEFAULT_BASEMAP = "CartoDB.PositronNoLabels"
 LEGACY_BASEMAP_NAMES = {
     "CartoDB Positron": "CartoDB.Positron",
@@ -169,11 +171,117 @@ def get_default_map_view() -> dict:
     dict
         Map view with ``center`` and ``zoom`` keys.
     """
-    if st.session_state.points:
-        lon, lat = st.session_state.points[-1]["geometry"]["coordinates"]
-        return {"center": [lat, lon], "zoom": 14}
-
     return {"center": [20, 0], "zoom": 2}
+
+
+BOUNDS_PADDING = 0.08
+BOUNDS_MIN_SPAN = 0.05
+MAP_VIEW_HEIGHT_PX = 300
+
+
+def get_points_bounds(points: list[dict]) -> list[list[float]] | None:
+    """Return southwest and northeast corners that contain all points.
+
+    Parameters
+    ----------
+    points : list of dict
+        GeoJSON-like point features from session state.
+
+    Returns
+    -------
+    list of list of float or None
+        Bounds as ``[[south, west], [north, east]]``, or ``None`` when empty.
+    """
+    if not points:
+        return None
+
+    lats: list[float] = []
+    lons: list[float] = []
+    for point in points:
+        lon, lat = point["geometry"]["coordinates"]
+        lats.append(lat)
+        lons.append(lon)
+
+    min_lat, max_lat = min(lats), max(lats)
+    min_lon, max_lon = min(lons), max(lons)
+
+    if max_lat - min_lat < BOUNDS_MIN_SPAN:
+        mid_lat = (min_lat + max_lat) / 2
+        min_lat = mid_lat - BOUNDS_MIN_SPAN / 2
+        max_lat = mid_lat + BOUNDS_MIN_SPAN / 2
+    if max_lon - min_lon < BOUNDS_MIN_SPAN:
+        mid_lon = (min_lon + max_lon) / 2
+        min_lon = mid_lon - BOUNDS_MIN_SPAN / 2
+        max_lon = mid_lon + BOUNDS_MIN_SPAN / 2
+
+    lat_pad = (max_lat - min_lat) * BOUNDS_PADDING
+    lon_pad = (max_lon - min_lon) * BOUNDS_PADDING
+    return [
+        [min_lat - lat_pad, min_lon - lon_pad],
+        [max_lat + lat_pad, max_lon + lon_pad],
+    ]
+
+
+def bounds_to_map_view(bounds: list[list[float]]) -> dict:
+    """Convert map bounds to a folium center and zoom level.
+
+    Parameters
+    ----------
+    bounds : list of list of float
+        Bounds as ``[[south, west], [north, east]]``.
+
+    Returns
+    -------
+    dict
+        Map view with ``center`` and ``zoom`` keys.
+    """
+    south, west = bounds[0]
+    north, east = bounds[1]
+    center_lat = (south + north) / 2
+    center_lon = (west + east) / 2
+
+    lat_span = max(north - south, 1e-6)
+    lon_span = max(east - west, 1e-6)
+    lat_rad = math.radians(center_lat)
+    effective_lon_span = max(lon_span * math.cos(lat_rad), 1e-6)
+    max_span = max(lat_span, effective_lon_span)
+
+    zoom = math.log2(MAP_VIEW_HEIGHT_PX * 360 / (256 * max_span))
+    return {
+        "center": [center_lat, center_lon],
+        "zoom": int(max(1, min(18, zoom))),
+    }
+
+
+def _points_view_fingerprint(points: list[dict]) -> str:
+    """Return a stable hash for the current point locations."""
+    if not points:
+        return "empty"
+
+    parts = sorted(
+        f"{round(lon, 4)},{round(lat, 4)}"
+        for point in points
+        for lon, lat in [point["geometry"]["coordinates"]]
+    )
+    digest = hashlib.sha256("|".join(parts).encode()).hexdigest()[:16]
+    return f"{len(points)}:{digest}"
+
+
+def sync_map_view_to_points() -> None:
+    """Fit the map view when the stored point locations change."""
+    points = st.session_state.points
+    fingerprint = _points_view_fingerprint(points)
+    if st.session_state.get("points_view_fingerprint") == fingerprint:
+        return
+
+    st.session_state.points_view_fingerprint = fingerprint
+    if not points:
+        st.session_state.last_map_view = get_default_map_view()
+        return
+
+    bounds = get_points_bounds(points)
+    if bounds is not None:
+        st.session_state.last_map_view = bounds_to_map_view(bounds)
 
 
 def update_map_view_from_data(map_data: dict) -> None:
@@ -288,6 +396,18 @@ def sync_map_style_from_pickers() -> None:
         st.session_state.basemap_name = st.session_state.basemap_picker
 
 
+def _ensure_basemap_picker_state() -> None:
+    """Initialize or repair the basemap picker session state value."""
+    if "basemap_picker" not in st.session_state:
+        st.session_state.basemap_picker = normalize_basemap_name(
+            st.session_state.basemap_name
+        )
+    elif st.session_state.basemap_picker not in BASEMAP_OPTIONS:
+        st.session_state.basemap_picker = normalize_basemap_name(
+            st.session_state.basemap_picker
+        )
+
+
 def render_search_section() -> None:
     """Render place search and advanced map or import options."""
     with st.container(border=False):
@@ -308,7 +428,7 @@ def render_search_section() -> None:
                     add_searched_place(place["lat"], place["lng"], place["name"])
                     request_rerun()
 
-        with st.expander("Advanced options", expanded=False, type="compact"):
+        with st.expander("Advanced import options", expanded=False, type="compact"):
             import_col, format_col = st.columns(2)
             with import_col:
                 st.caption("Public Google Sheet URL with `lat` and `lon` columns:")
@@ -329,27 +449,6 @@ def render_search_section() -> None:
                     label_visibility="collapsed",
                 )
             use_wkt = coordinate_format == "WKT Geometry"
-
-            if "basemap_picker" not in st.session_state:
-                st.session_state.basemap_picker = normalize_basemap_name(
-                    st.session_state.basemap_name
-                )
-            elif st.session_state.basemap_picker not in BASEMAP_OPTIONS:
-                st.session_state.basemap_picker = normalize_basemap_name(
-                    st.session_state.basemap_picker
-                )
-            st.caption("Basemap options:")
-            st.selectbox(
-                "Basemap options:",
-                options=BASEMAP_OPTIONS,
-                format_func=format_basemap_label,
-                key="basemap_picker",
-                on_change=sync_basemap_choice,
-                label_visibility="collapsed",
-            )
-            st.caption("Map options:")
-            st.checkbox("Show inset map", key="show_inset_map")
-            sync_map_style_from_pickers()
 
             if sheets_url and sheets_url != st.session_state.get(
                 "last_sheets_url", ""
@@ -386,7 +485,11 @@ def add_draggable_marker_handlers(map_object: folium.Map) -> None:
             if (!window.map || !window.__GLOBAL_DATA__) {
                 return;
             }
-            window.map.eachLayer(function(layer) {
+            function bindMarkerDragOnLayer(layer) {
+                if (layer instanceof L.MarkerClusterGroup) {
+                    layer.eachLayer(bindMarkerDragOnLayer);
+                    return;
+                }
                 if (layer instanceof L.Marker && !layer._dragUpdateBound) {
                     layer._dragUpdateBound = true;
                     layer.on("dragend", function(event) {
@@ -415,7 +518,8 @@ def add_draggable_marker_handlers(map_object: folium.Map) -> None:
                         }
                     });
                 }
-            });
+            }
+            window.map.eachLayer(bindMarkerDragOnLayer);
         }
         bindMarkerDragUpdates();
         if (window.map) {
@@ -830,6 +934,92 @@ def make_pin_div_icon(color: str) -> folium.DivIcon:
     )
 
 
+CLUSTER_MIN_SIZE_PX = 22
+CLUSTER_SIZE_PER_POINT_PX = 3
+CLUSTER_MAX_SIZE_PX = 40
+
+
+def _marker_cluster_icon_create_function(fallback_color: str) -> str:
+    """Return Leaflet ``iconCreateFunction`` JS for sized count cluster icons.
+
+    Cluster fill color is the most common ``pointColor`` among child markers.
+
+    Parameters
+    ----------
+    fallback_color : str
+        CSS fill color when child markers have no ``pointColor`` option.
+
+    Returns
+    -------
+    str
+        JavaScript function body assigned to MarkerCluster icon creation.
+    """
+    return f"""
+    function(cluster) {{
+        var count = cluster.getChildCount();
+        var colorCounts = {{}};
+        var dominantColor = "{fallback_color}";
+        var maxColorCount = 0;
+        cluster.getAllChildMarkers().forEach(function(marker) {{
+            var color = marker.options.pointColor || "{fallback_color}";
+            colorCounts[color] = (colorCounts[color] || 0) + 1;
+            if (colorCounts[color] > maxColorCount) {{
+                maxColorCount = colorCounts[color];
+                dominantColor = color;
+            }}
+        }});
+        var size = Math.min(
+            {CLUSTER_MAX_SIZE_PX},
+            {CLUSTER_MIN_SIZE_PX} + (count - 1) * {CLUSTER_SIZE_PER_POINT_PX}
+        );
+        var half = Math.floor(size / 2);
+        var fontSize = Math.max(10, Math.min(14, Math.floor(size / 2)));
+        return L.divIcon({{
+            html: '<div style="background-color:' + dominantColor +
+                ';width:' + size + 'px;height:' + size + 'px;border-radius:50%;' +
+                'border:2px solid white;display:flex;align-items:center;' +
+                'justify-content:center;color:white;font-weight:700;font-size:' +
+                fontSize + 'px;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.35);' +
+                'box-sizing:border-box;">' + count + '</div>',
+            className: '',
+            iconSize: [size, size],
+            iconAnchor: [half, half]
+        }});
+    }}
+    """
+
+
+def _create_point_marker(
+    point_index: int,
+    point: dict,
+    pin_color: str,
+) -> folium.Marker:
+    """Create a draggable map marker for one stored point.
+
+    Parameters
+    ----------
+    point_index : int
+        Zero-based index of the point in session state.
+    point : dict
+        GeoJSON-like point feature.
+    pin_color : str
+        CSS fill color for the pin icon.
+
+    Returns
+    -------
+    folium.Marker
+        Configured folium marker with tooltip and color metadata.
+    """
+    coords = point["geometry"]["coordinates"]
+    return folium.Marker(
+        location=[coords[1], coords[0]],
+        tooltip=f"Point {point_index + 1}: {point['properties']['name']}",
+        icon=make_pin_div_icon(pin_color),
+        draggable=True,
+        point_color=pin_color,
+    )
+
+
 def add_existing_points_to_map(map_object):
     """Add existing points from session state to the map.
 
@@ -846,18 +1036,25 @@ def add_existing_points_to_map(map_object):
     default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
     color_by_column = st.session_state.get("color_by_column", "Description")
     property_key = get_property_key(color_by_column)
+    use_cluster_bubbles = st.session_state.get("cluster_overlapping_pins", True)
+
+    if use_cluster_bubbles:
+        marker_cluster = MarkerCluster(
+            icon_create_function=_marker_cluster_icon_create_function(
+                default_color
+            ),
+        )
+        marker_target: folium.Map | MarkerCluster = marker_cluster
+    else:
+        marker_target = map_object
 
     for point_index, point in enumerate(st.session_state.points):
-        coords = point["geometry"]["coordinates"]
         value = get_point_property_value(point, property_key)
         pin_color = resolve_point_color(property_key, value, default_color)
+        _create_point_marker(point_index, point, pin_color).add_to(marker_target)
 
-        folium.Marker(
-            location=[coords[1], coords[0]],  # Note: folium uses [lat, lon]
-            tooltip=f"Point {point_index + 1}: {point['properties']['name']}",
-            icon=make_pin_div_icon(pin_color),
-            draggable=True,
-        ).add_to(map_object)
+    if use_cluster_bubbles:
+        marker_cluster.add_to(map_object)
 
 
 def _resolve_color_by_column_for_map() -> str:
@@ -886,7 +1083,8 @@ def _map_widget_key() -> str:
     """
     basemap = _resolve_basemap_name()
     inset_enabled = st.session_state.get("show_inset_map", False)
-    key = f"click2vector_map_{basemap}_{inset_enabled}"
+    cluster_bubbles = st.session_state.get("cluster_overlapping_pins", True)
+    key = f"click2vector_map_{basemap}_{inset_enabled}_{cluster_bubbles}"
 
     if not st.session_state.get("show_map_legend", False):
         return key
@@ -1195,8 +1393,6 @@ def create_point_table():
                 except IndexError:
                     pass
 
-        render_property_color_table()
-
 
 def _sync_property_color(property_key: str, value: str) -> None:
     """Persist one property color picker value in session state."""
@@ -1231,79 +1427,131 @@ def _resolve_color_by_column(colorable_columns: list[str]) -> str:
     return colorable_columns[0]
 
 
-def render_property_color_table() -> None:
-    """Render the color-by column selector and pin color pickers."""
+def render_display_settings() -> None:
+    """Render map display options and optional location color settings."""
+    _ensure_basemap_picker_state()
     default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
-    colorable_columns = get_colorable_columns(st.session_state.points)
-    color_by_column = _resolve_color_by_column(colorable_columns)
 
-    if "color_by_column_picker" not in st.session_state:
-        st.session_state.color_by_column_picker = color_by_column
-    elif st.session_state.color_by_column_picker not in colorable_columns:
-        st.session_state.color_by_column_picker = color_by_column
-
-    color_by_col, legend_toggle_col, _ = st.columns(
-        COLOR_TABLE_COLUMNS, vertical_alignment="bottom"
+    cluster_help = (
+        "Clusters merge nearby pins into a count circle. Each cluster uses the "
+        "pin color that appears most often in that group; when two colors tie, "
+        "the first dominant color is used."
     )
-    with color_by_col:
-        st.selectbox(
-            "Color points by:",
-            options=colorable_columns,
-            key="color_by_column_picker",
-            on_change=_sync_color_by_column,
+    with st.expander("Display settings", expanded=False, type="compact"):
+        basemap_col, color_by_col, _ = st.columns(
+            COLOR_TABLE_COLUMNS, vertical_alignment="bottom"
         )
-    with legend_toggle_col:
-        st.checkbox("Show legend on map", key="show_map_legend")
+        with basemap_col:
+            st.selectbox(
+                "Basemap",
+                options=BASEMAP_OPTIONS,
+                format_func=format_basemap_label,
+                key="basemap_picker",
+                on_change=sync_basemap_choice,
+            )
+        sync_map_style_from_pickers()
 
-    st.session_state.color_by_column = st.session_state.color_by_column_picker
-    property_key = get_property_key(st.session_state.color_by_column)
+        if st.session_state.points:
+            colorable_columns = get_colorable_columns(st.session_state.points)
+            color_by_column = _resolve_color_by_column(colorable_columns)
 
-    sync_property_color_state(st.session_state.points, property_key, default_color)
+            if "color_by_column_picker" not in st.session_state:
+                st.session_state.color_by_column_picker = color_by_column
+            elif st.session_state.color_by_column_picker not in colorable_columns:
+                st.session_state.color_by_column_picker = color_by_column
 
-    unique_values = get_unique_property_values(
-        st.session_state.points, property_key
-    )
-    colors = _get_property_colors(property_key)
-    column_label = st.session_state.color_by_column
-    legend_names = _get_legend_display_names(property_key)
-
-    header_value, header_legend, header_color = st.columns(COLOR_TABLE_COLUMNS)
-    with header_value:
-        st.caption("Value")
-    with header_legend:
-        st.caption("Legend Display Name")
-    with header_color:
-        st.caption("Point Color")
-
-    for value in unique_values:
-        category_label = value or f"(No {column_label.lower()})"
-        category_col, legend_col, color_col = st.columns(COLOR_TABLE_COLUMNS)
-        with category_col:
-            st.text(category_label)
-        with legend_col:
-            label_key = _legend_label_widget_key(property_key, value)
-            if label_key not in st.session_state:
-                st.session_state[label_key] = legend_names.get(
-                    value, category_label
+            with color_by_col:
+                st.selectbox(
+                    "Group column",
+                    options=colorable_columns,
+                    key="color_by_column_picker",
+                    on_change=_sync_color_by_column,
                 )
-            st.text_input(
-                "Legend Display Name",
-                key=label_key,
-                label_visibility="collapsed",
+
+            st.session_state.color_by_column = (
+                st.session_state.color_by_column_picker
             )
-            legend_names[value] = st.session_state[label_key]
-        with color_col:
-            picker_key = _property_color_widget_key(property_key, value)
-            if picker_key not in st.session_state:
-                st.session_state[picker_key] = colors[value]
-            st.color_picker(
-                category_label,
-                key=picker_key,
-                label_visibility="collapsed",
-                on_change=_sync_property_color,
-                args=(property_key, value),
+            property_key = get_property_key(st.session_state.color_by_column)
+
+            sync_property_color_state(
+                st.session_state.points, property_key, default_color
             )
-            _sync_property_color(property_key, value)
+
+            unique_values = get_unique_property_values(
+                st.session_state.points, property_key
+            )
+            colors = _get_property_colors(property_key)
+            column_label = st.session_state.color_by_column
+            legend_names = _get_legend_display_names(property_key)
+
+            header_value, header_legend, header_color = st.columns(
+                COLOR_TABLE_COLUMNS
+            )
+            with header_value:
+                st.caption("Group value")
+            with header_legend:
+                st.caption("Legend display name")
+            with header_color:
+                st.caption("Group color")
+
+            for value in unique_values:
+                category_label = value or f"(No {column_label.lower()})"
+                category_col, legend_col, color_col = st.columns(
+                    COLOR_TABLE_COLUMNS
+                )
+                with category_col:
+                    st.text(category_label)
+                with legend_col:
+                    label_key = _legend_label_widget_key(property_key, value)
+                    if label_key not in st.session_state:
+                        st.session_state[label_key] = legend_names.get(
+                            value, category_label
+                        )
+                    st.text_input(
+                        "Legend Display Name",
+                        key=label_key,
+                        label_visibility="collapsed",
+                    )
+                    legend_names[value] = st.session_state[label_key]
+                with color_col:
+                    picker_key = _property_color_widget_key(
+                        property_key, value
+                    )
+                    if picker_key not in st.session_state:
+                        st.session_state[picker_key] = colors[value]
+                    st.color_picker(
+                        category_label,
+                        key=picker_key,
+                        label_visibility="collapsed",
+                        on_change=_sync_property_color,
+                        args=(property_key, value),
+                    )
+                    _sync_property_color(property_key, value)
+
+        with st.container(
+            horizontal=True,
+            vertical_alignment="center",
+            gap="medium",
+            width="content",
+        ):
+            st.checkbox("Inset map", key="show_inset_map")
+            st.checkbox("Legend", key="show_map_legend")
+
+        if st.session_state.points:
+            with st.container(
+                horizontal=True,
+                vertical_alignment="center",
+                gap="small",
+                width="content",
+            ):
+                st.caption("Points")
+                st.toggle(
+                    "Cluster overlapping pins as clusters",
+                    key="cluster_overlapping_pins",
+                    label_visibility="collapsed",
+                    help=cluster_help,
+                )
+                st.caption("Clusters")
 
 
 def _render_interactive_map(basemap_name: str) -> dict | None:
@@ -1357,10 +1605,12 @@ def render_map_interface() -> dict | None:
     # Create map with features
     render_search_section()
 
+    _ensure_basemap_picker_state()
+    sync_map_view_to_points()
     map_data = _render_interactive_map(_resolve_basemap_name())
 
-    # Show point management controls if points exist
     if st.session_state.points:
         create_point_table()
+    render_display_settings()
 
     return map_data

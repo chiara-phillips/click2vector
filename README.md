@@ -72,21 +72,32 @@ your data is on another tab. If headers are missing, the app shows an error with
 guidance on title rows and header placement.
 
 ### Managing Your Data
-- **View Points**: Expand the "Point Table" to see all points in an editable table
+- **View Points**: Expand the **Location table** to see and edit points
 - **Descriptions**: Add an optional description per point; descriptions are included
   in exports
-- **Pin Colors**: Choose a column to color pins by (default: Description); each
-  category is read-only, with an editable legend label and color picker
-- **Map Options**: Fullscreen expand button on the map; basemap, inset map, and
-  Google Sheets import are under Advanced options below place search
-- **Legend**: Optional category color legend on the map (toggle below pin colors)
-- **Delete Points**: Delete rows directly in the Point Table using the row delete
+- **Display Settings**: Configure basemap, inset map, legend, and pin clustering;
+  choose a column to color locations by and edit legend labels and colors
+- **Pin Clustering**: Toggle **Points** vs **Clusters** to show individual pins or
+  merge overlapping pins into count bubbles (colored by the most common pin color
+  in each group)
+- **Auto-zoom**: The map fits all points when locations are added, imported, or
+  removed
+- **Delete Points**: Delete rows directly in the Location table using the row delete
   control
 - **Export Data**: Choose export format and filename, then download; exports include
   `lat` and `lon` attribute columns
 
 
 ## CHANGELOG
+`0.11.0` : 2026-05-30
+- Added optional location clustering with majority-color styling.
+- Added auto-zoom to fit all points when the location set changes.
+- Added a **Display settings** section for basemap, inset map, legend, clustering,
+  and location coloring.
+- Renamed **Point table** to **Location table** and separated it from display
+  options.
+- Moved basemap and inset map controls out of Advanced options.
+
 `0.10.0` : 2026-05-30
 - Added Google Sheets tab selection from `#gid=...` in the shared URL.
 - Added informative import errors when coordinate headers are missing or below a
