@@ -45,6 +45,8 @@ if "show_inset_map" not in st.session_state:
     st.session_state.show_inset_map = False
 if "show_map_legend" not in st.session_state:
     st.session_state.show_map_legend = False
+if "cluster_overlapping_pins" not in st.session_state:
+    st.session_state.cluster_overlapping_pins = True
 
 
 if st.session_state.points:
