@@ -61,7 +61,8 @@ For development, install additional dependencies and set up pre-commit hooks:
 - **Map Clicking**: Click anywhere on the map to drop a pin; drag pins to adjust
   their location
 - **Place Search**: Search for a place above the map and press Enter to geocode it
-  as a pin
+  as a pin (works when deployed on Streamlit Cloud via a Photon fallback if
+  Nominatim is unavailable)
 - **Google Sheets Import**: Paste a public Google Sheets URL with coordinate data
   (under Advanced options)
 
@@ -89,6 +90,11 @@ guidance on title rows and header placement.
 
 
 ## CHANGELOG
+`0.11.1` : 2026-05-30
+- Fixed place search crashing on Streamlit Cloud when Nominatim rejected requests.
+- Added Photon geocoding fallback and user-facing errors when geocoders are
+  unreachable.
+
 `0.11.0` : 2026-05-30
 - Added optional location clustering with majority-color styling.
 - Added auto-zoom to fit all points when the location set changes.
