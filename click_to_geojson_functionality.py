@@ -84,12 +84,12 @@ def reset_points():
     st.session_state.last_click = None
 
 
-def points_to_gdf(points):
+def points_to_gdf(points: list[dict]) -> gpd.GeoDataFrame:
     """Convert session points (GeoJSON features) to a GeoDataFrame.
 
     Parameters
     ----------
-    points : list
+    points : list of dict
         List of GeoJSON feature dictionaries.
 
     Returns
@@ -106,7 +106,12 @@ def points_to_gdf(points):
     for pt in points:
         lon, lat = pt["geometry"]["coordinates"]
         geometries.append(Point(lon, lat))
-        properties_list.append(pt["properties"].copy())
+        properties = {
+            key: value
+            for key, value in pt["properties"].items()
+            if key not in ("lat", "lon")
+        }
+        properties_list.append({"lat": lat, "lon": lon, **properties})
 
     gdf = gpd.GeoDataFrame(properties_list, geometry=geometries, crs="EPSG:4326")
 
@@ -122,6 +127,39 @@ def get_base_filename():
         A filename with format 'click2vector_YYYYMMDD_HHMMSS'.
     """
     return f"click2vector_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+
+EXPORT_EXTENSIONS: dict[str, str] = {
+    "GeoJSON": ".geojson",
+    "GeoJSON.io": ".geojson",
+    "Esri Shapefile (.zip)": ".zip",
+    "FlatGeobuf": ".fgb",
+}
+
+_KNOWN_EXPORT_SUFFIXES = frozenset({".geojson", ".json", ".zip", ".fgb"})
+
+
+def build_export_filename(filename: str, export_type: str) -> str:
+    """Return a download filename with the extension for ``export_type``.
+
+    Parameters
+    ----------
+    filename : str
+        User-provided filename, with or without an extension.
+    export_type : str
+        Selected export format key.
+
+    Returns
+    -------
+    str
+        Filename including the appropriate extension.
+    """
+    stem = filename.strip() or get_base_filename()
+    path = Path(stem)
+    if path.suffix.lower() in _KNOWN_EXPORT_SUFFIXES:
+        stem = path.stem
+
+    return f"{stem}{EXPORT_EXTENSIONS[export_type]}"
 
 
 def _export_shapefile(gdf: gpd.GeoDataFrame) -> bytes:
@@ -179,17 +217,20 @@ def _export_flatgeobuf(gdf: gpd.GeoDataFrame) -> bytes:
         return b""
 
 
-def _export_geojson_display():
+def _export_geojson_display(gdf: gpd.GeoDataFrame) -> str:
     """Export data as GeoJSON in pretty-printed format for display.
+
+    Parameters
+    ----------
+    gdf : geopandas.GeoDataFrame
+        The GeoDataFrame to export.
 
     Returns
     -------
     str
         The GeoJSON data as a formatted string ready for display.
     """
-    # Create the GeoJSON with pretty formatting for display
-    geojson_data = create_geojson()
-    # Use pretty formatting for easy reading
+    geojson_data = json.loads(gdf.to_json())
     return json.dumps(geojson_data, indent=2)
 
 
@@ -210,7 +251,7 @@ def export_data(gdf, export_type):
     """
     # Use a mapping instead of if/elif chains
     export_functions = {
-        "GeoJSON": lambda _: _export_geojson_display(),
+        "GeoJSON": _export_geojson_display,
         "Esri Shapefile (.zip)": _export_shapefile,
         "FlatGeobuf": _export_flatgeobuf,
     }

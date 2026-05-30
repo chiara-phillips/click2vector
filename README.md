@@ -4,7 +4,7 @@ An interactive Streamlit application for creating and exporting geographic point
 multiple vector formats. Click on a map, import from Google Sheets, or enter coordinates
  manually to build your dataset, then export it for use in GIS software, web maps, or
  other spatial applications.
- 
+
 [Open in Streamlit](https://click2vector.streamlit.app/)
 
 ## Installation & Setup
@@ -81,10 +81,14 @@ Your Google Sheet should have either:
 - **Advanced Options**: Basemap, default pin color, inset map toggle, Google Sheets
   import, export format, and GeoJSON preview
 - **Export Data**: Choose GeoJSON, Esri Shapefile (.zip), or FlatGeobuf and download
-  your dataset
+  your dataset; exports include `lat` and `lon` attribute columns
 
 
 ## CHANGELOG
+`0.9.1` : 2026-05-30
+- Added `lat` and `lon` attribute columns to all export formats.
+- Added export filename extension inference from the selected format.
+
 `0.9.0` : 2026-05-30
 - Added optional description column per point, included in exports.
 - Added pin colors by description with per-value color pickers in the Point Table.

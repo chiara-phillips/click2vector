@@ -5,6 +5,7 @@ This is the main Streamlit app that combines all the functionality.
 import streamlit as st
 
 from click_to_geojson_functionality import (
+    build_export_filename,
     export_data,
     get_base_filename,
     points_to_gdf,
@@ -154,12 +155,7 @@ if st.session_state.points:
 
     gdf = points_to_gdf(st.session_state.points)
 
-    export_filename = {
-        "GeoJSON": f"{filename}.geojson",
-        "GeoJSON.io": f"{filename}.geojson",
-        "Esri Shapefile (.zip)": f"{filename}.zip",
-        "FlatGeobuf": f"{filename}.fgb",
-    }[export_type]
+    export_filename = build_export_filename(filename, export_type)
 
     export_mime = {
         "GeoJSON": "application/geo+json",
