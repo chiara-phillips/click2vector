@@ -12,7 +12,7 @@ from click_to_geojson_functionality import add_point
 from styling import DEFAULT_BUTTON_COLOR
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-USER_AGENT = "click2vector/0.9.0"
+USER_AGENT = "click2vector/0.9.1"
 DESCRIPTION_COLOR_PALETTE = [
     "#4363d8",
     "#3cb44b",
