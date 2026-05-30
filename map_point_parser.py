@@ -2,17 +2,60 @@ from typing import Optional
 
 import folium
 import hashlib
+import html
 import pandas as pd
 import requests
 import streamlit as st
+import xyzservices.providers as xyz_providers
 from jinja2 import Template
 from streamlit_folium import st_folium
 
 from click_to_geojson_functionality import add_point
+from google_sheets_parser import import_from_google_sheets
 from styling import DEFAULT_BUTTON_COLOR
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-USER_AGENT = "click2vector/0.9.1"
+USER_AGENT = "click2vector/0.10.0"
+DEFAULT_BASEMAP = "CartoDB.PositronNoLabels"
+LEGACY_BASEMAP_NAMES = {
+    "CartoDB Positron": "CartoDB.Positron",
+    "OpenStreetMap": "CartoDB.PositronNoLabels",
+}
+BASEMAP_PROVIDER_GROUPS = (
+    "CartoDB",
+    "Esri",
+)
+BASEMAP_EXCLUDED_NAME_PARTS = (
+    "OnlyLabels",
+    "LabelsUnder",
+    "Lines",
+    "Background",
+    "overlay",
+    "HillShading",
+    "pistes",
+    "Reference",
+    "Arctic",
+    "Antarctic",
+    "LandLot",
+)
+BASEMAP_EXCLUDED_TILES = frozenset(
+    {
+        "Esri.NatGeoWorldMap",
+        "Esri.WorldShadedRelief",
+        "Esri.WorldTerrain",
+    }
+)
+BASEMAP_URL_KEY_PARTS = ("{apikey}", "{access_token}", "{token}", "{key}")
+BASEMAP_API_KEY_DOMAINS = (
+    "stadiamaps.com",
+    "jawg.io",
+    "api.mapbox.com",
+    "thunderforest.com",
+    "maptiler.com",
+    "geoapify.com",
+    "locationiq.com",
+    "hereapi.com",
+)
 DESCRIPTION_COLOR_PALETTE = [
     "#4363d8",
     "#3cb44b",
@@ -25,6 +68,92 @@ DESCRIPTION_COLOR_PALETTE = [
     "#800000",
     "#000075",
 ]
+TABLE_COLUMN_TO_PROPERTY = {
+    "Name": "name",
+    "Description": "description",
+}
+COLOR_TABLE_COLUMNS = [2, 2, 1]
+
+
+def _is_excluded_basemap(name: str) -> bool:
+    """Return whether a tile name should be omitted from the basemap list."""
+    if name in BASEMAP_EXCLUDED_TILES:
+        return True
+    return any(part in name for part in BASEMAP_EXCLUDED_NAME_PARTS)
+
+
+def _provider_requires_api_key(url: str) -> bool:
+    """Return whether a tile URL likely requires an API key."""
+    lowered = url.lower()
+    if any(part in lowered for part in BASEMAP_URL_KEY_PARTS):
+        return True
+    return any(domain in lowered for domain in BASEMAP_API_KEY_DOMAINS)
+
+
+def _collect_provider_tiles(provider_name: str) -> list[str]:
+    """Return tile ids for one xyzservices provider group."""
+    provider = getattr(xyz_providers, provider_name, None)
+    if provider is None:
+        return []
+    if isinstance(provider, dict) and "url" in provider:
+        name = provider.get("name", provider_name)
+        if _is_excluded_basemap(name) or _provider_requires_api_key(provider["url"]):
+            return []
+        return [name]
+
+    tiles = []
+    for variant in provider.values():
+        if not isinstance(variant, dict) or "url" not in variant:
+            continue
+        name = variant.get("name", provider_name)
+        if _is_excluded_basemap(name):
+            continue
+        if _provider_requires_api_key(variant["url"]):
+            continue
+        tiles.append(name)
+    return tiles
+
+
+def build_basemap_options() -> list[str]:
+    """Return free raster basemap tile ids supported by Folium."""
+    options = []
+    seen: set[str] = set()
+    for provider_name in BASEMAP_PROVIDER_GROUPS:
+        for tile_name in _collect_provider_tiles(provider_name):
+            if tile_name in seen:
+                continue
+            options.append(tile_name)
+            seen.add(tile_name)
+    return options
+
+
+BASEMAP_OPTIONS = build_basemap_options()
+
+
+def format_basemap_label(tile_name: str) -> str:
+    """Return a readable label for one basemap tile id."""
+    provider, _, variant = tile_name.partition(".")
+    if not variant:
+        return tile_name
+
+    provider_labels = {
+        "CartoDB": "Carto",
+    }
+    provider_label = provider_labels.get(provider, provider)
+    variant_label = (
+        variant.replace("NoLabels", " (no labels)")
+        .replace("DarkMatter", "Dark Matter")
+        .replace("LabelsUnder", "Labels Under")
+    )
+    return f"{provider_label} · {variant_label}"
+
+
+def normalize_basemap_name(name: str) -> str:
+    """Return a valid basemap tile id, mapping legacy names when needed."""
+    normalized = LEGACY_BASEMAP_NAMES.get(name, name)
+    if normalized in BASEMAP_OPTIONS:
+        return normalized
+    return DEFAULT_BASEMAP
 
 
 def request_rerun() -> None:
@@ -148,27 +277,92 @@ def add_searched_place(lat: float, lng: float, name: str) -> None:
     set_map_view(lat, lng)
 
 
-def render_place_search() -> None:
-    """Render a search field that geocodes a place and adds it as a point."""
-    with st.form("place_search_form"):
-        search_col, button_col = st.columns([4, 1], vertical_alignment="bottom")
-        with search_col:
+def sync_basemap_choice() -> None:
+    """Persist basemap selection across reruns triggered before widgets render."""
+    st.session_state.basemap_name = st.session_state.basemap_picker
+
+
+def sync_map_style_from_pickers() -> None:
+    """Copy widget values into persistent map style session state."""
+    if "basemap_picker" in st.session_state:
+        st.session_state.basemap_name = st.session_state.basemap_picker
+
+
+def render_search_section() -> None:
+    """Render place search and advanced map or import options."""
+    with st.container(border=False):
+        with st.form("place_search_form", border=False):
             query = st.text_input(
                 "Search for a place to add",
                 placeholder="e.g. Berlin",
             )
-        with button_col:
-            submitted = st.form_submit_button("Add pin", type="primary")
+            submitted = st.form_submit_button("\u200b")
 
-        if submitted and query.strip():
-            place = geocode_place_name(query.strip())
-            if place is None:
-                st.session_state.message = (
-                    f"No results found for '{query.strip()}'."
+            if submitted and query.strip():
+                place = geocode_place_name(query.strip())
+                if place is None:
+                    st.session_state.message = (
+                        f"No results found for '{query.strip()}'."
+                    )
+                else:
+                    add_searched_place(place["lat"], place["lng"], place["name"])
+                    request_rerun()
+
+        with st.expander("Advanced options", expanded=False, type="compact"):
+            import_col, format_col = st.columns(2)
+            with import_col:
+                st.caption("Public Google Sheet URL with `lat` and `lon` columns:")
+                sheets_url = st.text_input(
+                    "Public Google Sheet URL with `lat` and `lon` columns:",
+                    placeholder="https://docs.google.com/spreadsheets/d/...#gid=0",
+                    key="sheets_url_input",
+                    label_visibility="collapsed",
                 )
-            else:
-                add_searched_place(place["lat"], place["lng"], place["name"])
-                request_rerun()
+            with format_col:
+                st.caption(
+                    "Coordinate format to import from Google Sheet (if applicable):"
+                )
+                coordinate_format = st.radio(
+                    "Coordinate format to import from Google Sheet (if applicable):",
+                    options=["Lat/Long", "WKT Geometry"],
+                    index=0,
+                    label_visibility="collapsed",
+                )
+            use_wkt = coordinate_format == "WKT Geometry"
+
+            if "basemap_picker" not in st.session_state:
+                st.session_state.basemap_picker = normalize_basemap_name(
+                    st.session_state.basemap_name
+                )
+            elif st.session_state.basemap_picker not in BASEMAP_OPTIONS:
+                st.session_state.basemap_picker = normalize_basemap_name(
+                    st.session_state.basemap_picker
+                )
+            st.caption("Basemap options:")
+            st.selectbox(
+                "Basemap options:",
+                options=BASEMAP_OPTIONS,
+                format_func=format_basemap_label,
+                key="basemap_picker",
+                on_change=sync_basemap_choice,
+                label_visibility="collapsed",
+            )
+            st.caption("Map options:")
+            st.checkbox("Show inset map", key="show_inset_map")
+            sync_map_style_from_pickers()
+
+            if sheets_url and sheets_url != st.session_state.get(
+                "last_sheets_url", ""
+            ):
+                st.session_state.last_sheets_url = sheets_url
+                success = import_from_google_sheets(sheets_url, use_wkt)
+                if success:
+                    request_rerun()
+
+
+def render_place_search() -> None:
+    """Render a search field that geocodes a place and adds it as a point."""
+    render_search_section()
 
 
 def add_draggable_marker_handlers(map_object: folium.Map) -> None:
@@ -288,6 +482,11 @@ def create_map_with_features(basemap_name):
         tiles=basemap_name,
     )
 
+    folium.plugins.Fullscreen(
+        position="topright",
+        force_separate_button=True,
+    ).add_to(map_object)
+
     # Add an inset map (mini map) when enabled
     if st.session_state.get("show_inset_map", False):
         mini_map = folium.plugins.MiniMap(
@@ -306,8 +505,24 @@ def create_map_with_features(basemap_name):
     return map_object
 
 
-def get_unique_descriptions(points: list[dict]) -> list[str]:
-    """Return sorted unique description values across all points.
+def get_property_key(column_name: str) -> str:
+    """Return the point property key for a table column label.
+
+    Parameters
+    ----------
+    column_name : str
+        Display name from the point table.
+
+    Returns
+    -------
+    str
+        Property key stored on each point.
+    """
+    return TABLE_COLUMN_TO_PROPERTY.get(column_name, column_name)
+
+
+def get_colorable_columns(points: list[dict]) -> list[str]:
+    """Return table columns that can drive pin colors.
 
     Parameters
     ----------
@@ -317,35 +532,97 @@ def get_unique_descriptions(points: list[dict]) -> list[str]:
     Returns
     -------
     list of str
-        Sorted unique descriptions; empty string means no description.
+        Column labels shown in the color-by dropdown.
     """
-    return sorted(
-        {
-            point["properties"].get("description", "").strip()
-            for point in points
-        }
-    )
+    columns = ["Name", "Description"]
+    seen = set(columns)
+    for point in points:
+        for key in point["properties"]:
+            if key in ("name", "description", "timestamp"):
+                continue
+            if key not in seen:
+                columns.append(key)
+                seen.add(key)
+    return columns
 
 
-def sync_description_color_state(points: list[dict], default_color: str) -> None:
-    """Assign default colors to new descriptions and drop stale entries.
+def get_point_property_value(point: dict, property_key: str) -> str:
+    """Return one normalized property value from a point.
+
+    Parameters
+    ----------
+    point : dict
+        GeoJSON feature dictionary.
+    property_key : str
+        Property key to read from the point.
+
+    Returns
+    -------
+    str
+        Stripped string value for the property.
+    """
+    return str(point["properties"].get(property_key, "")).strip()
+
+
+def get_unique_property_values(points: list[dict], property_key: str) -> list[str]:
+    """Return sorted unique values for one property across all points.
 
     Parameters
     ----------
     points : list of dict
         GeoJSON feature dictionaries from session state.
+    property_key : str
+        Property key to collect values from.
+
+    Returns
+    -------
+    list of str
+        Sorted unique property values; empty string means no value set.
+    """
+    return sorted(
+        {get_point_property_value(point, property_key) for point in points}
+    )
+
+
+def _get_property_colors(property_key: str) -> dict[str, str]:
+    """Return the color map for one property, creating it if needed.
+
+    Parameters
+    ----------
+    property_key : str
+        Property key whose value-to-color map is requested.
+
+    Returns
+    -------
+    dict of str to str
+        Mapping from property value to hex color.
+    """
+    if "property_value_colors" not in st.session_state:
+        st.session_state.property_value_colors = {}
+    return st.session_state.property_value_colors.setdefault(property_key, {})
+
+
+def sync_property_color_state(
+    points: list[dict], property_key: str, default_color: str
+) -> None:
+    """Assign default colors to new property values and drop stale entries.
+
+    Parameters
+    ----------
+    points : list of dict
+        GeoJSON feature dictionaries from session state.
+    property_key : str
+        Property key used for pin coloring.
     default_color : str
         Default pin color used when assigning palette colors.
 
     Returns
     -------
     None
-        Updates ``description_colors`` in session state.
+        Updates ``property_value_colors`` in session state.
     """
-    if "description_colors" not in st.session_state:
-        st.session_state.description_colors = {}
-
-    unique_descriptions = get_unique_descriptions(points)
+    colors = _get_property_colors(property_key)
+    unique_values = get_unique_property_values(points, property_key)
     palette = [
         color
         for color in DESCRIPTION_COLOR_PALETTE
@@ -354,23 +631,21 @@ def sync_description_color_state(points: list[dict], default_color: str) -> None
     if not palette:
         palette = DESCRIPTION_COLOR_PALETTE
 
-    for index, description in enumerate(unique_descriptions):
-        if description not in st.session_state.description_colors:
-            if len(unique_descriptions) == 1:
-                st.session_state.description_colors[description] = default_color
+    for index, value in enumerate(unique_values):
+        if value not in colors:
+            if len(unique_values) == 1:
+                colors[value] = default_color
             else:
-                st.session_state.description_colors[description] = palette[
-                    index % len(palette)
-                ]
+                colors[value] = palette[index % len(palette)]
 
-    for stale_description in set(st.session_state.description_colors) - set(
-        unique_descriptions
-    ):
-        del st.session_state.description_colors[stale_description]
+    for stale_value in set(colors) - set(unique_values):
+        del colors[stale_value]
 
 
-def sync_description_colors_from_pickers(points: list[dict]) -> None:
-    """Copy color picker widget values into ``description_colors``.
+def sync_property_colors_from_pickers(
+    points: list[dict], property_key: str
+) -> None:
+    """Copy color picker widget values into ``property_value_colors``.
 
     Streamlit updates widget session state before the script runs, but the map
     is rendered above the pickers. Syncing here ensures marker colors reflect
@@ -380,46 +655,51 @@ def sync_description_colors_from_pickers(points: list[dict]) -> None:
     ----------
     points : list of dict
         GeoJSON feature dictionaries from session state.
+    property_key : str
+        Property key used for pin coloring.
 
     Returns
     -------
     None
-        Updates ``description_colors`` in session state.
+        Updates ``property_value_colors`` in session state.
     """
-    if "description_colors" not in st.session_state:
-        st.session_state.description_colors = {}
-
-    for description in get_unique_descriptions(points):
-        picker_key = f"desc_color_picker_{_description_color_widget_key(description)}"
+    colors = _get_property_colors(property_key)
+    for value in get_unique_property_values(points, property_key):
+        picker_key = _property_color_widget_key(property_key, value)
         if picker_key in st.session_state:
-            st.session_state.description_colors[description] = st.session_state[
-                picker_key
-            ]
+            colors[value] = st.session_state[picker_key]
 
 
-def _description_color_widget_key(description: str) -> str:
-    """Return a stable widget key suffix for a description value.
+def _property_color_widget_key(property_key: str, value: str) -> str:
+    """Return a stable widget key suffix for one property value.
 
     Parameters
     ----------
-    description : str
-        Point description text.
+    property_key : str
+        Property key used for pin coloring.
+    value : str
+        Property value assigned a pin color.
 
     Returns
     -------
     str
-        Short hash string safe for Streamlit widget keys.
+        Streamlit widget key for the value's color picker.
     """
-    return hashlib.sha256(description.encode()).hexdigest()[:16]
+    digest = hashlib.sha256(f"{property_key}:{value}".encode()).hexdigest()[:16]
+    return f"prop_color_picker_{digest}"
 
 
-def resolve_point_color(description: str, default_color: str) -> str:
-    """Return the marker color for a point from its description.
+def resolve_point_color(
+    property_key: str, value: str, default_color: str
+) -> str:
+    """Return the marker color for a point from one property value.
 
     Parameters
     ----------
-    description : str
-        Point description text.
+    property_key : str
+        Property key used for pin coloring.
+    value : str
+        Property value for the point.
     default_color : str
         Fallback color when no mapping exists yet.
 
@@ -428,10 +708,100 @@ def resolve_point_color(description: str, default_color: str) -> str:
     str
         Hex color code for the marker.
     """
-    normalized = (description or "").strip()
-    return st.session_state.get("description_colors", {}).get(
-        normalized, default_color
-    )
+    normalized = (value or "").strip()
+    colors = st.session_state.get("property_value_colors", {}).get(property_key, {})
+    return colors.get(normalized, default_color)
+
+
+def _get_legend_display_names(property_key: str) -> dict[str, str]:
+    """Return the legend label map for one property, creating it if needed.
+
+    Parameters
+    ----------
+    property_key : str
+        Property key used for pin coloring.
+
+    Returns
+    -------
+    dict of str to str
+        Mapping from property value to custom legend label.
+    """
+    if "legend_display_names" not in st.session_state:
+        st.session_state.legend_display_names = {}
+    return st.session_state.legend_display_names.setdefault(property_key, {})
+
+
+def get_legend_display_name(
+    property_key: str, value: str, default_label: str
+) -> str:
+    """Return the legend label for one property value.
+
+    Parameters
+    ----------
+    property_key : str
+        Property key used for pin coloring.
+    value : str
+        Property value for the point.
+    default_label : str
+        Fallback label when no custom name is stored.
+
+    Returns
+    -------
+    str
+        Label shown in the map legend.
+    """
+    stored = _get_legend_display_names(property_key).get(value)
+    if stored is not None and stored.strip():
+        return stored.strip()
+    return default_label
+
+
+def sync_legend_display_names_from_inputs(
+    points: list[dict], property_key: str
+) -> None:
+    """Copy legend label widget values into ``legend_display_names``.
+
+    Parameters
+    ----------
+    points : list of dict
+        GeoJSON feature dictionaries from session state.
+    property_key : str
+        Property key used for pin coloring.
+
+    Returns
+    -------
+    None
+        Updates ``legend_display_names`` in session state.
+    """
+    names = _get_legend_display_names(property_key)
+    unique_values = get_unique_property_values(points, property_key)
+    for value in unique_values:
+        widget_key = _legend_label_widget_key(property_key, value)
+        if widget_key in st.session_state:
+            names[value] = st.session_state[widget_key]
+    for stale_value in set(names) - set(unique_values):
+        del names[stale_value]
+
+
+def _legend_label_widget_key(property_key: str, value: str) -> str:
+    """Return a stable widget key suffix for one legend label input.
+
+    Parameters
+    ----------
+    property_key : str
+        Property key used for pin coloring.
+    value : str
+        Property value assigned a legend label.
+
+    Returns
+    -------
+    str
+        Streamlit widget key for the legend label input.
+    """
+    digest = hashlib.sha256(
+        f"legend:{property_key}:{value}".encode()
+    ).hexdigest()[:16]
+    return f"legend_label_{digest}"
 
 
 def make_pin_div_icon(color: str) -> folium.DivIcon:
@@ -474,11 +844,13 @@ def add_existing_points_to_map(map_object):
         Adds markers for all existing points to the map.
     """
     default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
+    color_by_column = st.session_state.get("color_by_column", "Description")
+    property_key = get_property_key(color_by_column)
 
     for point_index, point in enumerate(st.session_state.points):
         coords = point["geometry"]["coordinates"]
-        description = point["properties"].get("description", "")
-        pin_color = resolve_point_color(description, default_color)
+        value = get_point_property_value(point, property_key)
+        pin_color = resolve_point_color(property_key, value, default_color)
 
         folium.Marker(
             location=[coords[1], coords[0]],  # Note: folium uses [lat, lon]
@@ -486,6 +858,105 @@ def add_existing_points_to_map(map_object):
             icon=make_pin_div_icon(pin_color),
             draggable=True,
         ).add_to(map_object)
+
+
+def _resolve_color_by_column_for_map() -> str:
+    """Return the active color-by column before Location table widgets render."""
+    colorable_columns = get_colorable_columns(st.session_state.points)
+    picker_value = st.session_state.get("color_by_column_picker")
+    if picker_value in colorable_columns:
+        return picker_value
+    return _resolve_color_by_column(colorable_columns)
+
+
+def _resolve_basemap_name() -> str:
+    """Return the active basemap tile id from session state."""
+    picker_value = st.session_state.get("basemap_picker")
+    if picker_value in BASEMAP_OPTIONS:
+        return picker_value
+    return normalize_basemap_name(st.session_state.get("basemap_name", DEFAULT_BASEMAP))
+
+
+def _map_widget_key() -> str:
+    """Return a st_folium key that changes when map layers need to refresh.
+
+    ``st_folium`` hashes only the Leaflet script when choosing a component key,
+    so HTML legend overlays and similar basemap variants can fail to update
+    unless the key changes too.
+    """
+    basemap = _resolve_basemap_name()
+    inset_enabled = st.session_state.get("show_inset_map", False)
+    key = f"click2vector_map_{basemap}_{inset_enabled}"
+
+    if not st.session_state.get("show_map_legend", False):
+        return key
+
+    default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
+    color_by_column = _resolve_color_by_column_for_map()
+    property_key = get_property_key(color_by_column)
+    legend_parts = []
+    for value in get_unique_property_values(st.session_state.points, property_key):
+        default_label = value or f"(No {color_by_column.lower()})"
+        label = get_legend_display_name(property_key, value, default_label)
+        color = resolve_point_color(property_key, value, default_color)
+        legend_parts.append(f"{label}:{color}")
+    fingerprint = hashlib.sha256("|".join(legend_parts).encode()).hexdigest()[:12]
+    return f"{key}_legend_{fingerprint}"
+
+
+def add_map_color_legend(map_object: folium.Map) -> None:
+    """Add a categorical color legend to the map when enabled.
+
+    Parameters
+    ----------
+    map_object : folium.Map
+        The folium map to add the legend to.
+
+    Returns
+    -------
+    None
+        Adds a legend element to the map when ``show_map_legend`` is enabled.
+    """
+    from folium import Element
+
+    if not st.session_state.get("show_map_legend", False):
+        return
+    if not st.session_state.points:
+        return
+
+    default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
+    color_by_column = _resolve_color_by_column_for_map()
+    property_key = get_property_key(color_by_column)
+    unique_values = get_unique_property_values(
+        st.session_state.points, property_key
+    )
+    legend_rows = []
+    for value in unique_values:
+        default_label = value or f"(No {color_by_column.lower()})"
+        label = get_legend_display_name(property_key, value, default_label)
+        color = resolve_point_color(property_key, value, default_color)
+        safe_label = html.escape(label)
+        legend_rows.append(
+            f'<div style="display:flex;align-items:center;gap:8px;">'
+            f'<span style="background:{color};width:12px;height:12px;min-width:12px;'
+            f"border-radius:50%;border:1px solid #ccc;display:inline-block;"
+            f'box-sizing:border-box;flex-shrink:0;"></span>'
+            f'<span style="font-size:12px;line-height:12px;margin:0;">'
+            f"{safe_label}</span>"
+            f"</div>"
+        )
+
+    if not legend_rows:
+        return
+
+    legend_html = (
+        '<div style="position:fixed;bottom:24px;left:10px;z-index:10000;'
+        "background:white;border:1px solid #ccc;border-radius:4px;"
+        "padding:8px 10px;max-width:220px;display:flex;"
+        'flex-direction:column;gap:4px;">'
+        f'{"".join(legend_rows)}</div>'
+    )
+    map_object.get_root().html.add_child(Element(legend_html))
 
 
 def handle_map_clicks(map_data):
@@ -628,35 +1099,31 @@ def process_map_state(map_state: dict) -> bool:
     return handle_map_interactions(map_state)
 
 
-def create_point_management_controls():
-    """Create controls for managing points (remove last, clear all).
+def _sync_points_table_changes() -> None:
+    """Apply row deletions and edits from the point table data editor."""
+    state = st.session_state.get("points_table")
+    if not state:
+        return
 
-    Returns
-    -------
-    None
-        Renders point management buttons in the Streamlit interface.
-    """
-    col1, col2, col3, col4 = st.columns([1.5, 2, 2, 1])
+    changed = False
 
-    with col2:
-        if st.button("Remove Last Point", key="remove_last_point"):
-            try:
-                st.session_state.points.pop()
-                request_rerun()
-            except IndexError:
-                # No points to remove
-                pass
+    for idx in sorted(state.get("deleted_rows", []), reverse=True):
+        if 0 <= idx < len(st.session_state.points):
+            st.session_state.points.pop(idx)
+            changed = True
 
-    with col3:
-        if st.button("Clear All Points", key="clear_all_points_quick"):
-            try:
-                from click_to_geojson_functionality import reset_points
+    for idx, updates in state.get("edited_rows", {}).items():
+        point_idx = int(idx)
+        if 0 <= point_idx < len(st.session_state.points):
+            properties = st.session_state.points[point_idx]["properties"]
+            if "Name" in updates:
+                properties["name"] = str(updates["Name"])
+            if "Description" in updates:
+                properties["description"] = str(updates["Description"])
+            changed = True
 
-                reset_points()
-                request_rerun()
-            except Exception:
-                # No points to clear or other error
-                pass
+    if changed:
+        request_rerun()
 
 
 def create_point_table():
@@ -667,7 +1134,7 @@ def create_point_table():
     None
         Renders an interactive data table for point management.
     """
-    with st.expander("Point Table", expanded=True):
+    with st.expander("Location table", expanded=False, type="compact"):
         # Show points in a table
         points_data = []
         for point_index, point in enumerate(st.session_state.points):
@@ -702,6 +1169,8 @@ def create_point_table():
             df[display_columns],
             width="stretch",
             key="points_table",
+            num_rows="delete",
+            on_change=_sync_points_table_changes,
             column_config={
                 "Name": st.column_config.TextColumn("Name", disabled=False),
                 "Description": st.column_config.TextColumn(
@@ -716,7 +1185,6 @@ def create_point_table():
             },
         )
 
-        # Handle name and description changes
         if edited_df is not None:
             for i, row in edited_df.iterrows():
                 try:
@@ -725,74 +1193,121 @@ def create_point_table():
                         "Description"
                     ]
                 except IndexError:
-                    # Skip if this is the extra "add row" row
                     pass
 
-        render_description_color_table()
-
-        # Handle row selection for deletion
-        try:
-            selected_rows = st.session_state.points_table.get("selected_rows", [])
-            if selected_rows:
-                # Delete selected points (in reverse order to maintain indices)
-                for row in reversed(selected_rows):
-                    try:
-                        index_to_remove = row["Index"]
-                        if 0 <= index_to_remove < len(st.session_state.points):
-                            st.session_state.points.pop(index_to_remove)
-                    except (KeyError, IndexError):
-                        # Invalid row data or index
-                        continue
-                request_rerun()
-        except (KeyError, AttributeError):
-            # No points_table in session state or no selected_rows
-            pass
+        render_property_color_table()
 
 
-def _sync_description_color(description: str) -> None:
-    """Persist one description color picker value in session state."""
-    picker_key = f"desc_color_picker_{_description_color_widget_key(description)}"
-    st.session_state.description_colors[description] = st.session_state[picker_key]
+def _sync_property_color(property_key: str, value: str) -> None:
+    """Persist one property color picker value in session state."""
+    picker_key = _property_color_widget_key(property_key, value)
+    colors = _get_property_colors(property_key)
+    colors[value] = st.session_state[picker_key]
 
 
-def render_description_color_table() -> None:
-    """Render unique descriptions and a pin color picker for each."""
+def _sync_color_by_column() -> None:
+    """Persist the selected color-by column across reruns."""
+    st.session_state.color_by_column = st.session_state.color_by_column_picker
+
+
+def _resolve_color_by_column(colorable_columns: list[str]) -> str:
+    """Return a valid color-by column from session state.
+
+    Parameters
+    ----------
+    colorable_columns : list of str
+        Column labels available for pin coloring.
+
+    Returns
+    -------
+    str
+        Selected column label, falling back to ``Description`` when needed.
+    """
+    current = st.session_state.get("color_by_column", "Description")
+    if current in colorable_columns:
+        return current
+    if "Description" in colorable_columns:
+        return "Description"
+    return colorable_columns[0]
+
+
+def render_property_color_table() -> None:
+    """Render the color-by column selector and pin color pickers."""
     default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
-    sync_description_color_state(st.session_state.points, default_color)
+    colorable_columns = get_colorable_columns(st.session_state.points)
+    color_by_column = _resolve_color_by_column(colorable_columns)
 
-    unique_descriptions = get_unique_descriptions(st.session_state.points)
-    st.markdown("**Pin colors by description**")
-    header_desc, header_color = st.columns([3, 1])
-    with header_desc:
-        st.markdown("Description")
+    if "color_by_column_picker" not in st.session_state:
+        st.session_state.color_by_column_picker = color_by_column
+    elif st.session_state.color_by_column_picker not in colorable_columns:
+        st.session_state.color_by_column_picker = color_by_column
+
+    color_by_col, legend_toggle_col, _ = st.columns(
+        COLOR_TABLE_COLUMNS, vertical_alignment="bottom"
+    )
+    with color_by_col:
+        st.selectbox(
+            "Color points by:",
+            options=colorable_columns,
+            key="color_by_column_picker",
+            on_change=_sync_color_by_column,
+        )
+    with legend_toggle_col:
+        st.checkbox("Show legend on map", key="show_map_legend")
+
+    st.session_state.color_by_column = st.session_state.color_by_column_picker
+    property_key = get_property_key(st.session_state.color_by_column)
+
+    sync_property_color_state(st.session_state.points, property_key, default_color)
+
+    unique_values = get_unique_property_values(
+        st.session_state.points, property_key
+    )
+    colors = _get_property_colors(property_key)
+    column_label = st.session_state.color_by_column
+    legend_names = _get_legend_display_names(property_key)
+
+    header_value, header_legend, header_color = st.columns(COLOR_TABLE_COLUMNS)
+    with header_value:
+        st.caption("Value")
+    with header_legend:
+        st.caption("Legend Display Name")
     with header_color:
-        st.markdown("Pin color")
+        st.caption("Point Color")
 
-    for description in unique_descriptions:
-        label = description or "(No description)"
-        desc_col, color_col = st.columns([3, 1])
-        with desc_col:
-            st.text(label)
-        with color_col:
-            picker_key = (
-                f"desc_color_picker_{_description_color_widget_key(description)}"
+    for value in unique_values:
+        category_label = value or f"(No {column_label.lower()})"
+        category_col, legend_col, color_col = st.columns(COLOR_TABLE_COLUMNS)
+        with category_col:
+            st.text(category_label)
+        with legend_col:
+            label_key = _legend_label_widget_key(property_key, value)
+            if label_key not in st.session_state:
+                st.session_state[label_key] = legend_names.get(
+                    value, category_label
+                )
+            st.text_input(
+                "Legend Display Name",
+                key=label_key,
+                label_visibility="collapsed",
             )
+            legend_names[value] = st.session_state[label_key]
+        with color_col:
+            picker_key = _property_color_widget_key(property_key, value)
             if picker_key not in st.session_state:
-                st.session_state[picker_key] = st.session_state.description_colors[
-                    description
-                ]
+                st.session_state[picker_key] = colors[value]
             st.color_picker(
-                label,
+                category_label,
                 key=picker_key,
                 label_visibility="collapsed",
-                on_change=_sync_description_color,
-                args=(description,),
+                on_change=_sync_property_color,
+                args=(property_key, value),
             )
-            _sync_description_color(description)
+            _sync_property_color(property_key, value)
 
 
-def render_map_interface(basemap_name):
-    """Main function to render the complete map interface.
+def _render_interactive_map(basemap_name: str) -> dict | None:
+    """Build and display the folium map, returning st_folium output.
 
     Parameters
     ----------
@@ -801,20 +1316,16 @@ def render_map_interface(basemap_name):
 
     Returns
     -------
-    dict
+    dict or None
         The map data returned from st_folium for further processing.
     """
-    # Create map with features
-    render_place_search()
-
     map_object = create_map_with_features(basemap_name)
     map_view = st.session_state.get("last_map_view", get_default_map_view())
 
-    # Add existing points to map
     add_existing_points_to_map(map_object)
+    add_map_color_legend(map_object)
     add_draggable_marker_handlers(map_object)
 
-    # Display the map and capture clicks
     map_data = st_folium(
         map_object,
         height=300,
@@ -826,15 +1337,30 @@ def render_map_interface(basemap_name):
             "last_object_clicked_tooltip",
         ],
         use_container_width=True,
-        key="click2vector_map",
+        key=_map_widget_key(),
     )
 
     if map_data and process_map_state(map_data):
         request_rerun()
 
+    return map_data
+
+
+def render_map_interface() -> dict | None:
+    """Main function to render the complete map interface.
+
+    Returns
+    -------
+    dict or None
+        The map data returned from st_folium for further processing.
+    """
+    # Create map with features
+    render_search_section()
+
+    map_data = _render_interactive_map(_resolve_basemap_name())
+
     # Show point management controls if points exist
     if st.session_state.points:
-        create_point_management_controls()
         create_point_table()
 
     return map_data

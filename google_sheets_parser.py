@@ -2,6 +2,8 @@
 This module contains the functionality for importing data from Google Sheets.
 """
 
+from urllib.parse import parse_qs, urlparse
+
 import pandas as pd
 import streamlit as st
 
@@ -39,29 +41,57 @@ def extract_sheet_id(sheets_url):
         raise ValueError(f"Invalid Google Sheets URL: {e}")
 
 
-def get_csv_url(sheet_id):
+def extract_sheet_gid(sheets_url: str) -> str:
+    """Extract tab gid from a Google Sheets URL.
+
+    Parameters
+    ----------
+    sheets_url : str
+        The Google Sheets URL, optionally including ``#gid=...`` or ``?gid=...``.
+
+    Returns
+    -------
+    str
+        The tab gid from the URL, or ``"0"`` for the first tab when not specified.
+    """
+    parsed = urlparse(sheets_url)
+    if parsed.fragment.startswith("gid="):
+        return parsed.fragment.split("=", 1)[1].split("&")[0]
+    query_gid = parse_qs(parsed.query).get("gid")
+    if query_gid:
+        return query_gid[0]
+    return "0"
+
+
+def get_csv_url(sheet_id: str, gid: str = "0") -> str:
     """Generate CSV export URL for Google Sheets.
 
     Parameters
     ----------
     sheet_id : str
         The Google Sheets ID.
+    gid : str
+        The tab gid to export. Defaults to the first tab.
 
     Returns
     -------
     str
         The CSV export URL for the sheet.
     """
-    return f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+    return (
+        f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
+    )
 
 
-def load_sheet_data(csv_url):
+def load_sheet_data(csv_url, header=0):
     """Load data from Google Sheets CSV URL.
 
     Parameters
     ----------
     csv_url : str
         The CSV export URL for the Google Sheet.
+    header : int
+        Row number to use as the column header row.
 
     Returns
     -------
@@ -74,12 +104,94 @@ def load_sheet_data(csv_url):
         If the sheet cannot be accessed or loaded.
     """
     try:
-        df = pd.read_csv(csv_url)
+        df = pd.read_csv(csv_url, header=header)
         if df.empty:
             raise ValueError("Google Sheet is empty")
-        return df
+        return df.dropna(how="all")
     except Exception as e:
         raise Exception(f"Could not access Google Sheet: {e}")
+
+
+def detect_likely_header_row(csv_url: str, use_wkt: bool, max_scan: int = 5) -> int | None:
+    """Detect whether coordinate headers appear below row 1.
+
+    Parameters
+    ----------
+    csv_url : str
+        The CSV export URL for the Google Sheet.
+    use_wkt : bool
+        If True, search for a WKT geometry column. If False, search for lat/lon.
+    max_scan : int
+        Maximum number of header rows below row 1 to inspect.
+
+    Returns
+    -------
+    int or None
+        The 1-based sheet row number where headers likely start, or ``None``.
+    """
+    for header_index in range(1, max_scan):
+        try:
+            df = load_sheet_data(csv_url, header=header_index)
+        except Exception:
+            continue
+        wkt_col, lat_col, lon_col = find_coordinate_columns(df, use_wkt)
+        if use_wkt and wkt_col:
+            return header_index + 1
+        if not use_wkt and lat_col and lon_col:
+            return header_index + 1
+    return None
+
+
+def build_missing_column_error(
+    df: pd.DataFrame, use_wkt: bool, likely_header_row: int | None
+) -> str:
+    """Build an informative error when coordinate columns are missing.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame loaded using row 1 as headers.
+    use_wkt : bool
+        If True, the import expected a WKT geometry column.
+    likely_header_row : int or None
+        Detected 1-based row number where headers may actually start.
+
+    Returns
+    -------
+    str
+        User-facing error message.
+    """
+    columns_text = ", ".join(str(col) for col in df.columns)
+    if likely_header_row is not None:
+        expected = (
+            "a `wkt` or `geom` column"
+            if use_wkt
+            else "`lat` and `lon` (or `lng`) columns"
+        )
+        return (
+            f"**Column headers were not found on row 1.** Available columns: "
+            f"{columns_text}. Expected {expected} appear to start on row "
+            f"{likely_header_row}. Remove title rows above your headers, or move "
+            f"the header row to row 1."
+        )
+    if len(df.columns) == 1:
+        expected = (
+            "a WKT geometry column"
+            if use_wkt
+            else "`lat` and `lon` columns"
+        )
+        return (
+            f"**No coordinate columns found on row 1.** The sheet only has one "
+            f"column: {columns_text}. This often means a title row is above your "
+            f"headers. Put {expected} on row 1."
+        )
+    expected = "`wkt` or `geom`" if use_wkt else "`lat` and `lon` or `lng`"
+    return (
+        f"**No {'WKT geometry' if use_wkt else 'lat/lon'} columns found.** "
+        f"Available columns: {columns_text}. Looking for columns containing "
+        f"{expected}. Check the tab URL includes `#gid=...` if your data is on "
+        f"another tab, and ensure column headers are on row 1."
+    )
 
 
 def find_coordinate_columns(df, use_wkt=True):
@@ -258,11 +370,9 @@ def import_from_google_sheets(sheets_url, use_wkt=True):
         try:
             # Extract sheet ID and load data
             sheet_id = extract_sheet_id(sheets_url)
-            csv_url = get_csv_url(sheet_id)
+            gid = extract_sheet_gid(sheets_url)
+            csv_url = get_csv_url(sheet_id, gid)
             df = load_sheet_data(csv_url)
-
-            # Remove completely empty rows
-            df = df.dropna(how="all")
 
             # Find coordinate columns
             wkt_col, lat_col, lon_col = find_coordinate_columns(df, use_wkt)
@@ -270,23 +380,21 @@ def import_from_google_sheets(sheets_url, use_wkt=True):
             # Validate we have the expected coordinate columns
             if use_wkt:
                 if not wkt_col:
+                    likely_header_row = detect_likely_header_row(
+                        csv_url, use_wkt=True
+                    )
                     st.error(
-                        f"**No WKT geometry column found.** Available columns: "
-                        f"{', '.join(df.columns)}. Looking for columns containing "
-                        "'wkt' or 'geom'. "
-                        "Please ensure your sheet has a WKT geometry column "
-                        "or use lat/lon columns instead."
+                        build_missing_column_error(df, True, likely_header_row)
                     )
                     return False
                 st.success(f"Found WKT column: {wkt_col}")
             else:
                 if not lat_col or not lon_col:
+                    likely_header_row = detect_likely_header_row(
+                        csv_url, use_wkt=False
+                    )
                     st.error(
-                        f"**No lat/lon columns found.** Available columns: "
-                        f"{', '.join(df.columns)}. Looking for columns containing "
-                        "'lat' and 'lon' or 'lng'. "
-                        "Please ensure your sheet has latitude "
-                        "and longitude columns or use WKT geometry instead."
+                        build_missing_column_error(df, False, likely_header_row)
                     )
                     return False
                 st.success(f"Found coordinate columns: {lat_col} and {lon_col}")
