@@ -36,6 +36,8 @@ if "pin_color" not in st.session_state:
     st.session_state.pin_color = DEFAULT_BUTTON_COLOR
 if "color_by_column" not in st.session_state:
     st.session_state.color_by_column = "Description"
+if "label_by_column" not in st.session_state:
+    st.session_state.label_by_column = "Name"
 if "property_value_colors" not in st.session_state:
     st.session_state.property_value_colors = {}
 if "legend_display_names" not in st.session_state:

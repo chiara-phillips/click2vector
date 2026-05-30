@@ -578,23 +578,10 @@ def add_draggable_marker_handlers(map_object: folium.Map) -> None:
                     layer.on("dragend", function(event) {
                         var latlng = event.target.getLatLng();
                         window.__GLOBAL_DATA__.last_object_clicked = latlng;
-                        try {
-                            if (
-                                event.target.getTooltip &&
-                                event.target._tooltip
-                            ) {
-                                var content = event.target.getTooltip()
-                                    .getContent();
-                                if (typeof content === "function") {
-                                    content = content(event.target);
-                                }
-                                if (typeof extractContent === "function") {
-                                    window.__GLOBAL_DATA__
-                                        .last_object_clicked_tooltip =
-                                        extractContent(content);
-                                }
-                            }
-                        } catch (error) {}
+                        if (event.target.options.pointIndex !== undefined) {
+                            window.__GLOBAL_DATA__.last_object_clicked_point_index =
+                                event.target.options.pointIndex;
+                        }
                         if (typeof debouncedUpdateComponentValue
                             === "function") {
                             debouncedUpdateComponentValue(window.map);
@@ -1015,6 +1002,8 @@ def make_pin_div_icon(color: str) -> folium.DivIcon:
 CLUSTER_MIN_SIZE_PX = 22
 CLUSTER_SIZE_PER_POINT_PX = 3
 CLUSTER_MAX_SIZE_PX = 40
+CLUSTER_MAX_RADIUS_PX = 20
+CLUSTER_DISABLE_AT_ZOOM = 16
 
 
 def _marker_cluster_icon_create_function(fallback_color: str) -> str:
@@ -1067,10 +1056,33 @@ def _marker_cluster_icon_create_function(fallback_color: str) -> str:
     """
 
 
+def _point_tooltip_label(point: dict, label_column: str) -> str:
+    """Return hover tooltip text for one map marker.
+
+    Parameters
+    ----------
+    point : dict
+        GeoJSON-like point feature.
+    label_column : str
+        Table column label whose value is shown on hover.
+
+    Returns
+    -------
+    str
+        Tooltip text from the selected column.
+    """
+    property_key = get_property_key(label_column)
+    label_value = get_point_property_value(point, property_key)
+    if not label_value:
+        label_value = f"(No {label_column.lower()})"
+    return label_value
+
+
 def _create_point_marker(
     point_index: int,
     point: dict,
     pin_color: str,
+    label_column: str,
 ) -> folium.Marker:
     """Create a draggable map marker for one stored point.
 
@@ -1082,6 +1094,8 @@ def _create_point_marker(
         GeoJSON-like point feature.
     pin_color : str
         CSS fill color for the pin icon.
+    label_column : str
+        Table column label used for the marker hover tooltip.
 
     Returns
     -------
@@ -1091,10 +1105,11 @@ def _create_point_marker(
     coords = point["geometry"]["coordinates"]
     return folium.Marker(
         location=[coords[1], coords[0]],
-        tooltip=f"Point {point_index + 1}: {point['properties']['name']}",
+        tooltip=_point_tooltip_label(point, label_column),
         icon=make_pin_div_icon(pin_color),
         draggable=True,
         point_color=pin_color,
+        point_index=point_index,
     )
 
 
@@ -1114,10 +1129,13 @@ def add_existing_points_to_map(map_object):
     default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
     color_by_column = st.session_state.get("color_by_column", "Description")
     property_key = get_property_key(color_by_column)
+    label_by_column = _resolve_label_by_column_for_map()
     use_cluster_bubbles = st.session_state.get("cluster_overlapping_pins", True)
 
     if use_cluster_bubbles:
         marker_cluster = MarkerCluster(
+            max_cluster_radius=CLUSTER_MAX_RADIUS_PX,
+            disable_clustering_at_zoom=CLUSTER_DISABLE_AT_ZOOM,
             icon_create_function=_marker_cluster_icon_create_function(
                 default_color
             ),
@@ -1129,7 +1147,9 @@ def add_existing_points_to_map(map_object):
     for point_index, point in enumerate(st.session_state.points):
         value = get_point_property_value(point, property_key)
         pin_color = resolve_point_color(property_key, value, default_color)
-        _create_point_marker(point_index, point, pin_color).add_to(marker_target)
+        _create_point_marker(
+            point_index, point, pin_color, label_by_column
+        ).add_to(marker_target)
 
     if use_cluster_bubbles:
         marker_cluster.add_to(map_object)
@@ -1142,6 +1162,15 @@ def _resolve_color_by_column_for_map() -> str:
     if picker_value in colorable_columns:
         return picker_value
     return _resolve_color_by_column(colorable_columns)
+
+
+def _resolve_label_by_column_for_map() -> str:
+    """Return the active label column before Location table widgets render."""
+    labelable_columns = get_colorable_columns(st.session_state.points)
+    picker_value = st.session_state.get("label_by_column_picker")
+    if picker_value in labelable_columns:
+        return picker_value
+    return _resolve_label_by_column(labelable_columns)
 
 
 def _resolve_basemap_name() -> str:
@@ -1162,7 +1191,11 @@ def _map_widget_key() -> str:
     basemap = _resolve_basemap_name()
     inset_enabled = st.session_state.get("show_inset_map", False)
     cluster_bubbles = st.session_state.get("cluster_overlapping_pins", True)
-    key = f"click2vector_map_{basemap}_{inset_enabled}_{cluster_bubbles}"
+    label_column = st.session_state.get("label_by_column", "Name")
+    key = (
+        f"click2vector_map_{basemap}_{inset_enabled}_{cluster_bubbles}_"
+        f"{label_column}"
+    )
 
     if not st.session_state.get("show_map_legend", False):
         return key
@@ -1271,30 +1304,6 @@ def handle_map_clicks(map_data):
     return False  # No new point was added
 
 
-def _point_index_from_tooltip(tooltip: str) -> Optional[int]:
-    """Parse a point index from a marker tooltip label.
-
-    Parameters
-    ----------
-    tooltip : str
-        Marker tooltip text in the form ``Point N: name``.
-
-    Returns
-    -------
-    int or None
-        Zero-based point index, or None if parsing fails.
-    """
-    if not tooltip.startswith("Point "):
-        return None
-
-    try:
-        point_number = int(tooltip.split(":", maxsplit=1)[0].replace("Point ", ""))
-    except ValueError:
-        return None
-
-    return point_number - 1
-
-
 def handle_marker_drag(map_data: dict) -> bool:
     """Update a point when the user drags its marker.
 
@@ -1310,10 +1319,10 @@ def handle_marker_drag(map_data: dict) -> bool:
     """
     try:
         clicked = map_data["last_object_clicked"]
-        tooltip = map_data.get("last_object_clicked_tooltip") or ""
-        point_index = _point_index_from_tooltip(tooltip)
-        if point_index is None:
+        raw_index = map_data.get("last_object_clicked_point_index")
+        if raw_index is None:
             return False
+        point_index = int(raw_index)
 
         lat = clicked["lat"]
         lng = clicked["lng"]
@@ -1484,6 +1493,11 @@ def _sync_color_by_column() -> None:
     st.session_state.color_by_column = st.session_state.color_by_column_picker
 
 
+def _sync_label_by_column() -> None:
+    """Persist the selected label column across reruns."""
+    st.session_state.label_by_column = st.session_state.label_by_column_picker
+
+
 def _resolve_color_by_column(colorable_columns: list[str]) -> str:
     """Return a valid color-by column from session state.
 
@@ -1505,6 +1519,27 @@ def _resolve_color_by_column(colorable_columns: list[str]) -> str:
     return colorable_columns[0]
 
 
+def _resolve_label_by_column(labelable_columns: list[str]) -> str:
+    """Return a valid label column from session state.
+
+    Parameters
+    ----------
+    labelable_columns : list of str
+        Column labels available for marker hover tooltips.
+
+    Returns
+    -------
+    str
+        Selected column label, falling back to ``Name`` when needed.
+    """
+    current = st.session_state.get("label_by_column", "Name")
+    if current in labelable_columns:
+        return current
+    if "Name" in labelable_columns:
+        return "Name"
+    return labelable_columns[0]
+
+
 def render_display_settings() -> None:
     """Render map display options and optional location color settings."""
     _ensure_basemap_picker_state()
@@ -1516,7 +1551,7 @@ def render_display_settings() -> None:
         "the first dominant color is used."
     )
     with st.expander("Display settings", expanded=False, type="compact"):
-        basemap_col, color_by_col, _ = st.columns(
+        basemap_col, color_by_col, label_by_col = st.columns(
             COLOR_TABLE_COLUMNS, vertical_alignment="bottom"
         )
         with basemap_col:
@@ -1532,11 +1567,17 @@ def render_display_settings() -> None:
         if st.session_state.points:
             colorable_columns = get_colorable_columns(st.session_state.points)
             color_by_column = _resolve_color_by_column(colorable_columns)
+            label_by_column = _resolve_label_by_column(colorable_columns)
 
             if "color_by_column_picker" not in st.session_state:
                 st.session_state.color_by_column_picker = color_by_column
             elif st.session_state.color_by_column_picker not in colorable_columns:
                 st.session_state.color_by_column_picker = color_by_column
+
+            if "label_by_column_picker" not in st.session_state:
+                st.session_state.label_by_column_picker = label_by_column
+            elif st.session_state.label_by_column_picker not in colorable_columns:
+                st.session_state.label_by_column_picker = label_by_column
 
             with color_by_col:
                 st.selectbox(
@@ -1546,8 +1587,19 @@ def render_display_settings() -> None:
                     on_change=_sync_color_by_column,
                 )
 
+            with label_by_col:
+                st.selectbox(
+                    "Label column",
+                    options=colorable_columns,
+                    key="label_by_column_picker",
+                    on_change=_sync_label_by_column,
+                )
+
             st.session_state.color_by_column = (
                 st.session_state.color_by_column_picker
+            )
+            st.session_state.label_by_column = (
+                st.session_state.label_by_column_picker
             )
             property_key = get_property_key(st.session_state.color_by_column)
 
@@ -1660,7 +1712,7 @@ def _render_interactive_map(basemap_name: str) -> dict | None:
         returned_objects=[
             "last_clicked",
             "last_object_clicked",
-            "last_object_clicked_tooltip",
+            "last_object_clicked_point_index",
         ],
         use_container_width=True,
         key=_map_widget_key(),
