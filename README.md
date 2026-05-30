@@ -87,6 +87,16 @@ guidance on title rows and header placement.
 
 
 ## CHANGELOG
+`0.10.0` : 2026-05-30
+- Added Google Sheets tab selection from `#gid=...` in the shared URL.
+- Added informative import errors when coordinate headers are missing or below a
+  title row.
+- Added pin coloring by any Point Table column, with editable legend display names.
+- Added optional category color legend on the map and Folium fullscreen control.
+- Reorganized search, Advanced options, Point Table, and export layout.
+- Added direct row deletion in the Point Table and Enter-to-search for place lookup.
+- Removed separate point-management buttons and custom global button styling.
+
 `0.9.1` : 2026-05-30
 - Added `lat` and `lon` attribute columns to all export formats.
 - Added export filename extension inference from the selected format.

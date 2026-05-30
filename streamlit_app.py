@@ -11,6 +11,7 @@ from click_to_geojson_functionality import (
     points_to_gdf,
 )
 from map_point_parser import (
+    DEFAULT_BASEMAP,
     get_property_key,
     render_map_interface,
     sync_legend_display_names_from_inputs,
@@ -31,7 +32,7 @@ if "last_click" not in st.session_state:
 if "message" not in st.session_state:
     st.session_state.message = None
 if "basemap_name" not in st.session_state:
-    st.session_state.basemap_name = "CartoDB Positron"
+    st.session_state.basemap_name = DEFAULT_BASEMAP
 if "pin_color" not in st.session_state:
     st.session_state.pin_color = DEFAULT_BUTTON_COLOR
 if "color_by_column" not in st.session_state:
@@ -63,7 +64,7 @@ if st.session_state.points:
     )
 
 # Main app
-render_map_interface(st.session_state.basemap_name)
+render_map_interface()
 
 if st.session_state.message:
     if (
@@ -80,42 +81,49 @@ if st.session_state.points:
         st.session_state.custom_filename = get_base_filename()
 
     with st.container(border=False):
-        type_col, name_col = st.columns(2)
-        with type_col:
-            export_type = st.radio(
-                "Export file type:",
-                options=["GeoJSON", "Esri Shapefile (.zip)", "FlatGeobuf"],
-                index=0,
-                key="export_type_radio",
-            )
-        with name_col:
-            custom_filename = st.text_input(
-                "Export filename:",
-                value=st.session_state.custom_filename,
-                placeholder="Enter export filename",
-                key="filename_input",
-            )
+        with st.expander(
+            "Export settings", expanded=False, type="compact"
+        ):
+            type_col, name_col = st.columns(2)
+            with type_col:
+                st.caption("Export file type:")
+                export_type = st.radio(
+                    "Export file type:",
+                    options=["GeoJSON", "Esri Shapefile (.zip)", "FlatGeobuf"],
+                    index=0,
+                    key="export_type_radio",
+                    label_visibility="collapsed",
+                )
+            with name_col:
+                st.caption("Export filename:")
+                custom_filename = st.text_input(
+                    "Export filename:",
+                    value=st.session_state.custom_filename,
+                    placeholder="Enter export filename",
+                    key="filename_input",
+                    label_visibility="collapsed",
+                )
 
-        st.session_state.custom_filename = custom_filename
+            st.session_state.custom_filename = custom_filename
 
-        if custom_filename.strip() and custom_filename.strip() != get_base_filename():
-            filename = custom_filename.strip()
-        else:
-            filename = get_base_filename()
+            if custom_filename.strip() and custom_filename.strip() != get_base_filename():
+                filename = custom_filename.strip()
+            else:
+                filename = get_base_filename()
 
-        gdf = points_to_gdf(st.session_state.points)
-        export_filename = build_export_filename(filename, export_type)
+            gdf = points_to_gdf(st.session_state.points)
+            export_filename = build_export_filename(filename, export_type)
+
+            if export_type == "GeoJSON":
+                with st.expander("GeoJSON output", expanded=False, type="compact"):
+                    st.code(export_data(gdf, export_type), language="json")
+
         export_mime = {
             "GeoJSON": "application/geo+json",
             "GeoJSON.io": "text/plain",
             "Esri Shapefile (.zip)": "application/zip",
             "FlatGeobuf": "application/octet-stream",
         }[export_type]
-
-        with type_col:
-            if export_type == "GeoJSON":
-                with st.expander("GeoJSON output", expanded=False, type="compact"):
-                    st.code(export_data(gdf, export_type), language="json")
 
         _, download_col, _ = st.columns([1, 1, 1])
         with download_col:

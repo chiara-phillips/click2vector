@@ -6,6 +6,7 @@ import html
 import pandas as pd
 import requests
 import streamlit as st
+import xyzservices.providers as xyz_providers
 from jinja2 import Template
 from streamlit_folium import st_folium
 
@@ -14,8 +15,47 @@ from google_sheets_parser import import_from_google_sheets
 from styling import DEFAULT_BUTTON_COLOR
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-USER_AGENT = "click2vector/0.9.1"
-BASEMAP_OPTIONS = ["CartoDB Positron", "OpenStreetMap"]
+USER_AGENT = "click2vector/0.10.0"
+DEFAULT_BASEMAP = "CartoDB.PositronNoLabels"
+LEGACY_BASEMAP_NAMES = {
+    "CartoDB Positron": "CartoDB.Positron",
+    "OpenStreetMap": "CartoDB.PositronNoLabels",
+}
+BASEMAP_PROVIDER_GROUPS = (
+    "CartoDB",
+    "Esri",
+)
+BASEMAP_EXCLUDED_NAME_PARTS = (
+    "OnlyLabels",
+    "LabelsUnder",
+    "Lines",
+    "Background",
+    "overlay",
+    "HillShading",
+    "pistes",
+    "Reference",
+    "Arctic",
+    "Antarctic",
+    "LandLot",
+)
+BASEMAP_EXCLUDED_TILES = frozenset(
+    {
+        "Esri.NatGeoWorldMap",
+        "Esri.WorldShadedRelief",
+        "Esri.WorldTerrain",
+    }
+)
+BASEMAP_URL_KEY_PARTS = ("{apikey}", "{access_token}", "{token}", "{key}")
+BASEMAP_API_KEY_DOMAINS = (
+    "stadiamaps.com",
+    "jawg.io",
+    "api.mapbox.com",
+    "thunderforest.com",
+    "maptiler.com",
+    "geoapify.com",
+    "locationiq.com",
+    "hereapi.com",
+)
 DESCRIPTION_COLOR_PALETTE = [
     "#4363d8",
     "#3cb44b",
@@ -33,6 +73,87 @@ TABLE_COLUMN_TO_PROPERTY = {
     "Description": "description",
 }
 COLOR_TABLE_COLUMNS = [2, 2, 1]
+
+
+def _is_excluded_basemap(name: str) -> bool:
+    """Return whether a tile name should be omitted from the basemap list."""
+    if name in BASEMAP_EXCLUDED_TILES:
+        return True
+    return any(part in name for part in BASEMAP_EXCLUDED_NAME_PARTS)
+
+
+def _provider_requires_api_key(url: str) -> bool:
+    """Return whether a tile URL likely requires an API key."""
+    lowered = url.lower()
+    if any(part in lowered for part in BASEMAP_URL_KEY_PARTS):
+        return True
+    return any(domain in lowered for domain in BASEMAP_API_KEY_DOMAINS)
+
+
+def _collect_provider_tiles(provider_name: str) -> list[str]:
+    """Return tile ids for one xyzservices provider group."""
+    provider = getattr(xyz_providers, provider_name, None)
+    if provider is None:
+        return []
+    if isinstance(provider, dict) and "url" in provider:
+        name = provider.get("name", provider_name)
+        if _is_excluded_basemap(name) or _provider_requires_api_key(provider["url"]):
+            return []
+        return [name]
+
+    tiles = []
+    for variant in provider.values():
+        if not isinstance(variant, dict) or "url" not in variant:
+            continue
+        name = variant.get("name", provider_name)
+        if _is_excluded_basemap(name):
+            continue
+        if _provider_requires_api_key(variant["url"]):
+            continue
+        tiles.append(name)
+    return tiles
+
+
+def build_basemap_options() -> list[str]:
+    """Return free raster basemap tile ids supported by Folium."""
+    options = []
+    seen: set[str] = set()
+    for provider_name in BASEMAP_PROVIDER_GROUPS:
+        for tile_name in _collect_provider_tiles(provider_name):
+            if tile_name in seen:
+                continue
+            options.append(tile_name)
+            seen.add(tile_name)
+    return options
+
+
+BASEMAP_OPTIONS = build_basemap_options()
+
+
+def format_basemap_label(tile_name: str) -> str:
+    """Return a readable label for one basemap tile id."""
+    provider, _, variant = tile_name.partition(".")
+    if not variant:
+        return tile_name
+
+    provider_labels = {
+        "CartoDB": "Carto",
+    }
+    provider_label = provider_labels.get(provider, provider)
+    variant_label = (
+        variant.replace("NoLabels", " (no labels)")
+        .replace("DarkMatter", "Dark Matter")
+        .replace("LabelsUnder", "Labels Under")
+    )
+    return f"{provider_label} · {variant_label}"
+
+
+def normalize_basemap_name(name: str) -> str:
+    """Return a valid basemap tile id, mapping legacy names when needed."""
+    normalized = LEGACY_BASEMAP_NAMES.get(name, name)
+    if normalized in BASEMAP_OPTIONS:
+        return normalized
+    return DEFAULT_BASEMAP
 
 
 def request_rerun() -> None:
@@ -161,17 +282,10 @@ def sync_basemap_choice() -> None:
     st.session_state.basemap_name = st.session_state.basemap_picker
 
 
-def sync_pin_color_choice() -> None:
-    """Persist pin color across reruns triggered before widgets render."""
-    st.session_state.pin_color = st.session_state.pin_color_picker
-
-
 def sync_map_style_from_pickers() -> None:
     """Copy widget values into persistent map style session state."""
     if "basemap_picker" in st.session_state:
         st.session_state.basemap_name = st.session_state.basemap_picker
-    if "pin_color_picker" in st.session_state:
-        st.session_state.pin_color = st.session_state.pin_color_picker
 
 
 def render_search_section() -> None:
@@ -195,36 +309,46 @@ def render_search_section() -> None:
                     request_rerun()
 
         with st.expander("Advanced options", expanded=False, type="compact"):
-            sheets_url = st.text_input(
-                "Public Google Sheet URL with `lat` and `lon` columns:",
-                placeholder="https://docs.google.com/spreadsheets/d/...#gid=0",
-                key="sheets_url_input",
-            )
-            coordinate_format = st.radio(
-                "Coordinate format to import from Google Sheet (if applicable):",
-                options=["Lat/Long", "WKT Geometry"],
-                index=0,
-                horizontal=True,
-            )
+            import_col, format_col = st.columns(2)
+            with import_col:
+                st.caption("Public Google Sheet URL with `lat` and `lon` columns:")
+                sheets_url = st.text_input(
+                    "Public Google Sheet URL with `lat` and `lon` columns:",
+                    placeholder="https://docs.google.com/spreadsheets/d/...#gid=0",
+                    key="sheets_url_input",
+                    label_visibility="collapsed",
+                )
+            with format_col:
+                st.caption(
+                    "Coordinate format to import from Google Sheet (if applicable):"
+                )
+                coordinate_format = st.radio(
+                    "Coordinate format to import from Google Sheet (if applicable):",
+                    options=["Lat/Long", "WKT Geometry"],
+                    index=0,
+                    label_visibility="collapsed",
+                )
             use_wkt = coordinate_format == "WKT Geometry"
+
             if "basemap_picker" not in st.session_state:
-                st.session_state.basemap_picker = st.session_state.basemap_name
-            if "pin_color_picker" not in st.session_state:
-                st.session_state.pin_color_picker = st.session_state.pin_color
-            st.radio(
+                st.session_state.basemap_picker = normalize_basemap_name(
+                    st.session_state.basemap_name
+                )
+            elif st.session_state.basemap_picker not in BASEMAP_OPTIONS:
+                st.session_state.basemap_picker = normalize_basemap_name(
+                    st.session_state.basemap_picker
+                )
+            st.caption("Basemap options:")
+            st.selectbox(
                 "Basemap options:",
                 options=BASEMAP_OPTIONS,
-                horizontal=True,
+                format_func=format_basemap_label,
                 key="basemap_picker",
                 on_change=sync_basemap_choice,
+                label_visibility="collapsed",
             )
+            st.caption("Map options:")
             st.checkbox("Show inset map", key="show_inset_map")
-            if not st.session_state.points:
-                st.color_picker(
-                    "Default pin color:",
-                    key="pin_color_picker",
-                    on_change=sync_pin_color_choice,
-                )
             sync_map_style_from_pickers()
 
             if sheets_url and sheets_url != st.session_state.get(
@@ -736,6 +860,50 @@ def add_existing_points_to_map(map_object):
         ).add_to(map_object)
 
 
+def _resolve_color_by_column_for_map() -> str:
+    """Return the active color-by column before Location table widgets render."""
+    colorable_columns = get_colorable_columns(st.session_state.points)
+    picker_value = st.session_state.get("color_by_column_picker")
+    if picker_value in colorable_columns:
+        return picker_value
+    return _resolve_color_by_column(colorable_columns)
+
+
+def _resolve_basemap_name() -> str:
+    """Return the active basemap tile id from session state."""
+    picker_value = st.session_state.get("basemap_picker")
+    if picker_value in BASEMAP_OPTIONS:
+        return picker_value
+    return normalize_basemap_name(st.session_state.get("basemap_name", DEFAULT_BASEMAP))
+
+
+def _map_widget_key() -> str:
+    """Return a st_folium key that changes when map layers need to refresh.
+
+    ``st_folium`` hashes only the Leaflet script when choosing a component key,
+    so HTML legend overlays and similar basemap variants can fail to update
+    unless the key changes too.
+    """
+    basemap = _resolve_basemap_name()
+    inset_enabled = st.session_state.get("show_inset_map", False)
+    key = f"click2vector_map_{basemap}_{inset_enabled}"
+
+    if not st.session_state.get("show_map_legend", False):
+        return key
+
+    default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
+    color_by_column = _resolve_color_by_column_for_map()
+    property_key = get_property_key(color_by_column)
+    legend_parts = []
+    for value in get_unique_property_values(st.session_state.points, property_key):
+        default_label = value or f"(No {color_by_column.lower()})"
+        label = get_legend_display_name(property_key, value, default_label)
+        color = resolve_point_color(property_key, value, default_color)
+        legend_parts.append(f"{label}:{color}")
+    fingerprint = hashlib.sha256("|".join(legend_parts).encode()).hexdigest()[:12]
+    return f"{key}_legend_{fingerprint}"
+
+
 def add_map_color_legend(map_object: folium.Map) -> None:
     """Add a categorical color legend to the map when enabled.
 
@@ -757,7 +925,7 @@ def add_map_color_legend(map_object: folium.Map) -> None:
         return
 
     default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
-    color_by_column = st.session_state.get("color_by_column", "Description")
+    color_by_column = _resolve_color_by_column_for_map()
     property_key = get_property_key(color_by_column)
     unique_values = get_unique_property_values(
         st.session_state.points, property_key
@@ -769,11 +937,12 @@ def add_map_color_legend(map_object: folium.Map) -> None:
         color = resolve_point_color(property_key, value, default_color)
         safe_label = html.escape(label)
         legend_rows.append(
-            f'<div style="display:flex;align-items:center;margin-bottom:4px;">'
-            f'<span style="background:{color};width:12px;height:12px;'
-            f"border-radius:50%;border:1px solid #ccc;flex-shrink:0;"
-            f'margin-right:8px;"></span>'
-            f'<span style="font-size:12px;line-height:1.2;">{safe_label}</span>'
+            f'<div style="display:flex;align-items:center;gap:8px;">'
+            f'<span style="background:{color};width:12px;height:12px;min-width:12px;'
+            f"border-radius:50%;border:1px solid #ccc;display:inline-block;"
+            f'box-sizing:border-box;flex-shrink:0;"></span>'
+            f'<span style="font-size:12px;line-height:12px;margin:0;">'
+            f"{safe_label}</span>"
             f"</div>"
         )
 
@@ -781,9 +950,10 @@ def add_map_color_legend(map_object: folium.Map) -> None:
         return
 
     legend_html = (
-        '<div style="position:absolute;bottom:24px;left:10px;z-index:1000;'
+        '<div style="position:fixed;bottom:24px;left:10px;z-index:10000;'
         "background:white;border:1px solid #ccc;border-radius:4px;"
-        'padding:8px 10px;max-width:220px;">'
+        "padding:8px 10px;max-width:220px;display:flex;"
+        'flex-direction:column;gap:4px;">'
         f'{"".join(legend_rows)}</div>'
     )
     map_object.get_root().html.add_child(Element(legend_html))
@@ -964,7 +1134,7 @@ def create_point_table():
     None
         Renders an interactive data table for point management.
     """
-    with st.expander("Point Table", expanded=True, type="compact"):
+    with st.expander("Location table", expanded=False, type="compact"):
         # Show points in a table
         points_data = []
         for point_index, point in enumerate(st.session_state.points):
@@ -1167,7 +1337,7 @@ def _render_interactive_map(basemap_name: str) -> dict | None:
             "last_object_clicked_tooltip",
         ],
         use_container_width=True,
-        key="click2vector_map",
+        key=_map_widget_key(),
     )
 
     if map_data and process_map_state(map_data):
@@ -1176,23 +1346,18 @@ def _render_interactive_map(basemap_name: str) -> dict | None:
     return map_data
 
 
-def render_map_interface(basemap_name):
+def render_map_interface() -> dict | None:
     """Main function to render the complete map interface.
-
-    Parameters
-    ----------
-    basemap_name : str
-        The name of the basemap to use.
 
     Returns
     -------
-    dict
+    dict or None
         The map data returned from st_folium for further processing.
     """
     # Create map with features
     render_search_section()
 
-    map_data = _render_interactive_map(basemap_name)
+    map_data = _render_interactive_map(_resolve_basemap_name())
 
     # Show point management controls if points exist
     if st.session_state.points:
