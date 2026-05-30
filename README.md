@@ -60,28 +60,30 @@ For development, install additional dependencies and set up pre-commit hooks:
 ### Adding Points
 - **Map Clicking**: Click anywhere on the map to drop a pin; drag pins to adjust
   their location
-- **Place Search**: Search for a place above the map and click **Add pin** to
-  geocode it
+- **Place Search**: Search for a place above the map and press Enter to geocode it
+  as a pin
 - **Google Sheets Import**: Paste a public Google Sheets URL with coordinate data
   (under Advanced options)
 
 ### Google Sheets Import
-Your Google Sheet should have either:
-- A column with 'wkt' or 'geom' in the name containing WKT Point format: `Point (longitude latitude)`
-- OR separate columns with 'lat' and 'lon' (or 'lng') in their names
+Paste a public Google Sheet URL with `lat` and `lon` columns under Advanced
+options (or choose WKT Geometry below the URL). Include `#gid=...` in the URL when
+your data is on another tab. If headers are missing, the app shows an error with
+guidance on title rows and header placement.
 
 ### Managing Your Data
 - **View Points**: Expand the "Point Table" to see all points in an editable table
 - **Descriptions**: Add an optional description per point; descriptions are included
   in exports
-- **Pin Colors**: Map pins are colored by description; set a color for each unique
-  description in the Point Table
-- **Delete Points**: Select rows in the table to remove points, or use **Remove Last
-  Point** and **Clear All Points**
-- **Advanced Options**: Basemap, default pin color, inset map toggle, Google Sheets
-  import, export format, and GeoJSON preview
-- **Export Data**: Choose GeoJSON, Esri Shapefile (.zip), or FlatGeobuf and download
-  your dataset; exports include `lat` and `lon` attribute columns
+- **Pin Colors**: Choose a column to color pins by (default: Description); each
+  category is read-only, with an editable legend label and color picker
+- **Map Options**: Fullscreen expand button on the map; basemap, inset map, and
+  Google Sheets import are under Advanced options below place search
+- **Legend**: Optional category color legend on the map (toggle below pin colors)
+- **Delete Points**: Delete rows directly in the Point Table using the row delete
+  control
+- **Export Data**: Choose export format and filename, then download; exports include
+  `lat` and `lon` attribute columns
 
 
 ## CHANGELOG

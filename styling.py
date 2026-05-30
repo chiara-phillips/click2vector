@@ -5,7 +5,6 @@ This module contains the styling for the Streamlit app.
 import streamlit as st
 
 DEFAULT_BUTTON_COLOR = "#f75f61"
-HOVER_BUTTON_COLOR = "#f97f81"
 
 
 def create_styled_title(
@@ -40,54 +39,28 @@ def create_styled_title(
 
 
 def inject_global_css() -> None:
-    """Inject custom global CSS styles into Streamlit app to standardize buttons look.
-
-    This function applies consistent styling to all `st.button` and `st.download_button`
-    elements across all pages in the app, including background color, text color,
-    border radius, padding, and hover/click effects.
+    """Inject custom global CSS styles into the Streamlit app.
 
     Returns
     -------
     None
-        CSS is injected directly into the Streamlit app via `st.markdown`.
+        CSS is injected directly into the Streamlit app via ``st.markdown``.
     """
     st.markdown(
-        f"""
+        """
             <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600"
                   rel="stylesheet">
             <style>
-                /* Default Style for ALL Buttons (Generate & Download) */
-                div.stButton > button,
-                div.stDownloadButton > button {{
-                    background-color: {DEFAULT_BUTTON_COLOR} !important;
-                    color: white !important;
-                    border-radius: 100px !important;
-                    border: none;
-                    padding: 8px 16px;
-                    font-size: 16px;
-                    transition: 0.3s;
-                    font-family: 'Inter', system-ui, 'Segoe UI', Arial, sans-serif
-                    !important;
-                }}
-
-                /* Hover Effect for ALL Buttons */
-                div.stButton > button:hover,
-                div.stDownloadButton > button:hover {{
-                    background-color: {HOVER_BUTTON_COLOR} !important;
-                    color: white !important;
-                }}
-
-                /* Clicked (Active) Effect for ALL Buttons */
-                div.stButton > button:focus,
-                div.stButton > button:active,
-                div.stDownloadButton > button:focus,
-                div.stDownloadButton > button:active {{
-                    background-color: {DEFAULT_BUTTON_COLOR} !important;
-                    color: white !important;
-                    outline: none !important;
-                    border: none !important;
-                }}
-                </style>
+                html, body, [class*="css"] {
+                    font-family: 'Inter', system-ui, 'Segoe UI', Arial, sans-serif;
+                }
+                /* Hide the zero-width place-search submit control; Enter submits */
+                div[data-testid="stForm"]:has(
+                    input[aria-label="Search for a place to add"]
+                ) div[data-testid="stFormSubmitButton"] {
+                    display: none;
+                }
+            </style>
             """,
         unsafe_allow_html=True,
     )
