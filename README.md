@@ -31,7 +31,7 @@ This project uses [Poetry](https://python-poetry.org/) for dependency management
 
 3. **Run the application**
    ```bash
-   poetry run streamlit run main.py
+   poetry run streamlit run streamlit_app.py
    ```
 
 4. **Open your browser** and navigate to the local URL (typically http://localhost:8501)
