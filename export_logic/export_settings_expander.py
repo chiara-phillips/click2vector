@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from export_logic import build_export_filename, export_data, get_base_filename
+from export_logic.export import build_export_filename, export_data, get_base_filename
 from locations import points_to_gdf
 
 
