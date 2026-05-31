@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "click2vector"
-version = "0.11.1"
+version = "0.11.2"
 description = "Click 2 Vector: interactive map for creating and exporting vector points"
 authors = ["Chiara Phillips"]
 readme = "README.md"

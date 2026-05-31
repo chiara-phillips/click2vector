@@ -31,7 +31,7 @@ This project uses [Poetry](https://python-poetry.org/) for dependency management
 
 3. **Run the application**
    ```bash
-   poetry run streamlit run streamlit_app.py
+   poetry run streamlit run main.py
    ```
 
 4. **Open your browser** and navigate to the local URL (typically http://localhost:8501)
@@ -90,6 +90,9 @@ guidance on title rows and header placement.
 
 
 ## CHANGELOG
+`0.11.2` : 2026-05-31
+- Locked the app to light mode only.
+
 `0.11.1` : 2026-05-30
 - Fixed place search crashing on Streamlit Cloud when Nominatim rejected requests.
 - Added Photon geocoding fallback and user-facing errors when geocoders are
