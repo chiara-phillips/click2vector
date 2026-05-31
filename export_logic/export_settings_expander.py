@@ -2,8 +2,8 @@
 
 import streamlit as st
 
-from export_logic import build_export_filename, export_data, get_base_filename
-from locations import points_to_gdf
+from export_logic.export import build_export_filename, export_data, get_base_filename
+from points.session import points_to_gdf
 
 
 def render_export_settings_expander() -> None:
@@ -56,7 +56,6 @@ def render_export_settings_expander() -> None:
 
         export_mime = {
             "GeoJSON": "application/geo+json",
-            "GeoJSON.io": "text/plain",
             "Esri Shapefile (.zip)": "application/zip",
             "FlatGeobuf": "application/octet-stream",
         }[export_type]

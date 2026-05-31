@@ -5,7 +5,7 @@ from typing import Optional
 import requests
 import streamlit as st
 
-from locations import add_point
+from points.session import add_point
 from map_ui.display.advanced_import_expander import render_advanced_import_expander
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
@@ -174,7 +174,3 @@ def render_search_section() -> None:
 
         render_advanced_import_expander()
 
-
-def render_place_search() -> None:
-    """Render a search field that geocodes a place and adds it as a point."""
-    render_search_section()

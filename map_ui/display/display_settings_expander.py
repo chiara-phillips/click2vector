@@ -6,15 +6,8 @@ from map_ui.basemap import (
     BASEMAP_OPTIONS,
     ensure_basemap_picker_state,
     format_basemap_label,
-    sync_basemap_choice,
-    sync_map_style_from_pickers,
 )
-from map_ui.display.columns import (
-    resolve_color_by_column,
-    resolve_label_by_column,
-    sync_color_by_column,
-    sync_label_by_column,
-)
+from map_ui.display.columns import resolve_color_by_column, resolve_label_by_column
 from map_ui.display.legend import get_legend_display_names, legend_label_widget_key
 from map_ui.display.pin_colors import (
     get_property_colors,
@@ -50,9 +43,8 @@ def render_display_settings_expander() -> None:
                 options=BASEMAP_OPTIONS,
                 format_func=format_basemap_label,
                 key="basemap_picker",
-                on_change=sync_basemap_choice,
             )
-        sync_map_style_from_pickers()
+            st.session_state.basemap_name = st.session_state.basemap_picker
 
         if st.session_state.points:
             colorable_columns = get_colorable_columns(st.session_state.points)
@@ -74,7 +66,6 @@ def render_display_settings_expander() -> None:
                     "Group column",
                     options=colorable_columns,
                     key="color_by_column_picker",
-                    on_change=sync_color_by_column,
                 )
 
             with label_by_col:
@@ -82,7 +73,6 @@ def render_display_settings_expander() -> None:
                     "Label column",
                     options=colorable_columns,
                     key="label_by_column_picker",
-                    on_change=sync_label_by_column,
                 )
 
             st.session_state.color_by_column = (

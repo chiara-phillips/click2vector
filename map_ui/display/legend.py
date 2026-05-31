@@ -6,7 +6,7 @@ import html
 import folium
 import streamlit as st
 
-from map_ui.display.columns import resolve_color_by_column_for_map
+from map_ui.display.columns import resolve_color_by_column
 from map_ui.display.pin_colors import resolve_point_color
 from map_ui.display.properties import get_property_key, get_unique_property_values
 from styling import DEFAULT_BUTTON_COLOR
@@ -121,7 +121,7 @@ def add_map_color_legend(map_object: folium.Map) -> None:
         return
 
     default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
-    color_by_column = resolve_color_by_column_for_map()
+    color_by_column = resolve_color_by_column(prefer_picker=True)
     property_key = get_property_key(color_by_column)
     unique_values = get_unique_property_values(
         st.session_state.points, property_key

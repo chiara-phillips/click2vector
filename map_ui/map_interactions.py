@@ -5,7 +5,7 @@ import streamlit as st
 from jinja2 import Template
 
 from map_ui.view import get_default_map_view, set_map_view, update_map_view_from_data
-from locations import add_point
+from points.session import add_point
 
 def add_draggable_marker_handlers(map_object: folium.Map) -> None:
     """Report marker drag events to streamlit-folium.
@@ -138,24 +138,6 @@ def handle_marker_drag(map_data: dict) -> bool:
         return False
 
 
-def handle_map_interactions(map_data: dict) -> bool:
-    """Handle click and drag interactions on the map.
-
-    Parameters
-    ----------
-    map_data : dict
-        The map data returned from st_folium.
-
-    Returns
-    -------
-    bool
-        True if map state changed, False otherwise.
-    """
-    if handle_map_clicks(map_data):
-        return True
-    return handle_marker_drag(map_data)
-
-
 def process_map_state(map_state: dict) -> bool:
     """Update the map view and apply map interaction handlers.
 
@@ -173,4 +155,6 @@ def process_map_state(map_state: dict) -> bool:
         return False
 
     update_map_view_from_data(map_state)
-    return handle_map_interactions(map_state)
+    if handle_map_clicks(map_state):
+        return True
+    return handle_marker_drag(map_state)

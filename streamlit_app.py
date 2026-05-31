@@ -5,14 +5,14 @@ import streamlit as st
 APP_NAME = "Click 2 Vector"
 
 from export_logic.export_settings_expander import render_export_settings_expander
-from map_ui import (
-    DEFAULT_BASEMAP,
-    get_property_key,
-    render_map_interface,
-    sync_legend_display_names_from_inputs,
+from map_ui.basemap import DEFAULT_BASEMAP
+from map_ui.display.legend import sync_legend_display_names_from_inputs
+from map_ui.display.pin_colors import (
     sync_property_color_state,
     sync_property_colors_from_pickers,
 )
+from map_ui.display.properties import get_property_key
+from map_ui.map_interface import render_map_interface
 from styling import DEFAULT_BUTTON_COLOR, inject_global_css
 
 st.set_page_config(page_title=APP_NAME, layout="centered")
