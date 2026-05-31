@@ -56,7 +56,6 @@ def render_export_settings_expander() -> None:
 
         export_mime = {
             "GeoJSON": "application/geo+json",
-            "GeoJSON.io": "text/plain",
             "Esri Shapefile (.zip)": "application/zip",
             "FlatGeobuf": "application/octet-stream",
         }[export_type]

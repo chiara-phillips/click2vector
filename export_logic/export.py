@@ -12,7 +12,6 @@ import streamlit as st
 
 EXPORT_EXTENSIONS: dict[str, str] = {
     "GeoJSON": ".geojson",
-    "GeoJSON.io": ".geojson",
     "Esri Shapefile (.zip)": ".zip",
     "FlatGeobuf": ".fgb",
 }
@@ -147,7 +146,4 @@ def export_data(gdf: gpd.GeoDataFrame, export_type: str) -> str | bytes:
         "FlatGeobuf": _export_flatgeobuf,
     }
 
-    try:
-        return export_functions[export_type](gdf)
-    except KeyError:
-        return b""
+    return export_functions[export_type](gdf)

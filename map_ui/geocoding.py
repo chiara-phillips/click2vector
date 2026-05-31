@@ -174,7 +174,3 @@ def render_search_section() -> None:
 
         render_advanced_import_expander()
 
-
-def render_place_search() -> None:
-    """Render a search field that geocodes a place and adds it as a point."""
-    render_search_section()

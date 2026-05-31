@@ -53,29 +53,6 @@ def add_point(
     st.session_state.points.append(point)
 
 
-def create_geojson() -> dict:
-    """Create a GeoJSON FeatureCollection from stored points.
-
-    Returns
-    -------
-    dict
-        A GeoJSON FeatureCollection containing all stored points.
-    """
-    return {"type": "FeatureCollection", "features": st.session_state.points}
-
-
-def reset_points() -> None:
-    """Clear all points from the session state.
-
-    Returns
-    -------
-    None
-        Clears st.session_state.points and resets last_click.
-    """
-    st.session_state.points = []
-    st.session_state.last_click = None
-
-
 def points_to_gdf(points: list[dict]) -> gpd.GeoDataFrame:
     """Convert session points (GeoJSON features) to a GeoDataFrame.
 

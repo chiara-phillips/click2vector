@@ -2,7 +2,6 @@
 
 from map_ui.display.legend import (
     add_map_color_legend,
-    get_legend_display_name,
     sync_legend_display_names_from_inputs,
 )
 from map_ui.display.location_table_expander import render_location_table_expander
@@ -21,7 +20,6 @@ __all__ = [
     "add_existing_points_to_map",
     "add_map_color_legend",
     "render_location_table_expander",
-    "get_legend_display_name",
     "get_property_key",
     "map_widget_key",
     "render_display_settings_expander",
