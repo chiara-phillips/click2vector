@@ -8,7 +8,7 @@ DEFAULT_BUTTON_COLOR = "#f75f61"
 
 
 def create_styled_title(
-    text: str, level: int = 1, color: str = "#f75f61", align: str = "left"
+    text: str, level: int = 1, color: str = DEFAULT_BUTTON_COLOR, align: str = "left"
 ) -> None:
     """Render a styled HTML heading in Streamlit using Seqana's design conventions.
 
