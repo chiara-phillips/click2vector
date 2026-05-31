@@ -9,12 +9,12 @@ spatial applications.
 
 ## Installation & Setup
 
-This project uses [Poetry](https://python-poetry.org/) for dependency management.
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 ### Prerequisites
 
 - Python 3.11+
-- [Poetry](https://python-poetry.org/docs/#installation)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### Installation
 
@@ -24,14 +24,14 @@ This project uses [Poetry](https://python-poetry.org/) for dependency management
    cd click2vector
    ```
 
-2. **Install dependencies with Poetry**
+2. **Install dependencies with uv**
    ```bash
-   poetry install
+   uv sync --group dev
    ```
 
 3. **Run the application**
    ```bash
-   poetry run streamlit run main.py
+   uv run streamlit run main.py
    ```
 
 4. **Open your browser** and navigate to the local URL (typically http://localhost:8501)
@@ -42,17 +42,17 @@ For development, install additional dependencies and set up pre-commit hooks:
 
 1. **Install all dependencies (including dev)**
    ```bash
-   poetry install
+   uv sync --group dev
    ```
 
 2. **Install pre-commit hooks**
    ```bash
-   poetry run pre-commit install
+   uv run pre-commit install
    ```
 
 3. **Run pre-commit on all files (optional)**
    ```bash
-   poetry run pre-commit run --all-files
+   uv run pre-commit run --all-files
    ```
 
 ## Usage
