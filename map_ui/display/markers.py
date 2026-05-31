@@ -9,7 +9,7 @@ from map_ui.display.cluster import (
     CLUSTER_MAX_RADIUS_PX,
     marker_cluster_icon_create_function,
 )
-from map_ui.display.columns import resolve_label_by_column_for_map
+from map_ui.display.columns import resolve_label_by_column
 from map_ui.display.pin_colors import resolve_point_color
 from map_ui.display.properties import get_point_property_value, get_property_key
 from styling import DEFAULT_BUTTON_COLOR
@@ -111,7 +111,7 @@ def add_existing_points_to_map(map_object):
     default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
     color_by_column = st.session_state.get("color_by_column", "Description")
     property_key = get_property_key(color_by_column)
-    label_by_column = resolve_label_by_column_for_map()
+    label_by_column = resolve_label_by_column(prefer_picker=True)
     use_cluster_bubbles = st.session_state.get("cluster_overlapping_pins", True)
 
     if use_cluster_bubbles:

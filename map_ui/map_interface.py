@@ -4,13 +4,11 @@ import streamlit as st
 from streamlit_folium import st_folium
 
 from map_ui.basemap import ensure_basemap_picker_state, resolve_basemap_name
-from map_ui.display import (
-    add_existing_points_to_map,
-    add_map_color_legend,
-    render_location_table_expander,
-    map_widget_key,
-    render_display_settings_expander,
-)
+from map_ui.display.display_settings_expander import render_display_settings_expander
+from map_ui.display.legend import add_map_color_legend
+from map_ui.display.location_table_expander import render_location_table_expander
+from map_ui.display.markers import add_existing_points_to_map
+from map_ui.display.widget_key import map_widget_key
 from map_ui.geocoding import render_search_section
 from map_ui.map_interactions import (
     add_draggable_marker_handlers,

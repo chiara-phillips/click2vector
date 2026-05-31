@@ -3,7 +3,7 @@
 import streamlit as st
 
 from export_logic.export import build_export_filename, export_data, get_base_filename
-from locations import points_to_gdf
+from points.session import points_to_gdf
 
 
 def render_export_settings_expander() -> None:

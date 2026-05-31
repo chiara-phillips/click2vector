@@ -1,4 +1,4 @@
-"""Location session-state management and GeoDataFrame conversion."""
+"""Point session-state management and GeoDataFrame conversion."""
 
 from datetime import datetime
 

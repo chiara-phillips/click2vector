@@ -126,17 +126,6 @@ def normalize_basemap_name(name: str) -> str:
     return DEFAULT_BASEMAP
 
 
-def sync_basemap_choice() -> None:
-    """Persist basemap selection across reruns triggered before widgets render."""
-    st.session_state.basemap_name = st.session_state.basemap_picker
-
-
-def sync_map_style_from_pickers() -> None:
-    """Copy widget values into persistent map style session state."""
-    if "basemap_picker" in st.session_state:
-        st.session_state.basemap_name = st.session_state.basemap_picker
-
-
 def ensure_basemap_picker_state() -> None:
     """Initialize or repair the basemap picker session state value."""
     if "basemap_picker" not in st.session_state:

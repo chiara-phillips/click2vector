@@ -5,7 +5,7 @@ from typing import Optional
 import requests
 import streamlit as st
 
-from locations import add_point
+from points.session import add_point
 from map_ui.display.advanced_import_expander import render_advanced_import_expander
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
