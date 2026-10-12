@@ -14,6 +14,7 @@ from map_ui.display.pin_colors import resolve_point_color
 from map_ui.display.properties import get_point_property_value, get_property_key
 from styling import DEFAULT_BUTTON_COLOR
 
+
 def make_pin_div_icon(color: str) -> folium.DivIcon:
     """Create a circular map pin icon with the given fill color.
 
@@ -38,6 +39,8 @@ def make_pin_div_icon(color: str) -> folium.DivIcon:
         </div>
         """
     )
+
+
 def point_tooltip_label(point: dict, label_column: str) -> str:
     """Return hover tooltip text for one map marker.
 
@@ -118,9 +121,7 @@ def add_existing_points_to_map(map_object):
         marker_cluster = MarkerCluster(
             max_cluster_radius=CLUSTER_MAX_RADIUS_PX,
             disable_clustering_at_zoom=CLUSTER_DISABLE_AT_ZOOM,
-            icon_create_function=marker_cluster_icon_create_function(
-                default_color
-            ),
+            icon_create_function=marker_cluster_icon_create_function(default_color),
         )
         marker_target: folium.Map | MarkerCluster = marker_cluster
     else:
@@ -129,9 +130,9 @@ def add_existing_points_to_map(map_object):
     for point_index, point in enumerate(st.session_state.points):
         value = get_point_property_value(point, property_key)
         pin_color = resolve_point_color(property_key, value, default_color)
-        create_point_marker(
-            point_index, point, pin_color, label_by_column
-        ).add_to(marker_target)
+        create_point_marker(point_index, point, pin_color, label_by_column).add_to(
+            marker_target
+        )
 
     if use_cluster_bubbles:
         marker_cluster.add_to(map_object)

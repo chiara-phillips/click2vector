@@ -4,6 +4,7 @@ import streamlit as st
 
 from map_ui.display.properties import get_colorable_columns
 
+
 def resolve_color_by_column_for_map() -> str:
     """Return the active color-by column before Location table widgets render."""
     colorable_columns = get_colorable_columns(st.session_state.points)
@@ -20,6 +21,7 @@ def resolve_label_by_column_for_map() -> str:
     if picker_value in labelable_columns:
         return picker_value
     return resolve_label_by_column(labelable_columns)
+
 
 def sync_color_by_column() -> None:
     """Persist the selected color-by column across reruns."""

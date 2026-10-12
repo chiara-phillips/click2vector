@@ -12,9 +12,7 @@ def render_export_settings_expander() -> None:
         st.session_state.custom_filename = get_base_filename()
 
     with st.container(border=False):
-        with st.expander(
-            "Export settings", expanded=False, type="compact"
-        ):
+        with st.expander("Export settings", expanded=False, type="compact"):
             type_col, name_col = st.columns(2)
             with type_col:
                 st.caption("Export file type:")
@@ -49,9 +47,7 @@ def render_export_settings_expander() -> None:
             export_filename = build_export_filename(filename, export_type)
 
             if export_type == "GeoJSON":
-                with st.expander(
-                    "GeoJSON output", expanded=False, type="compact"
-                ):
+                with st.expander("GeoJSON output", expanded=False, type="compact"):
                     st.code(export_data(gdf, export_type), language="json")
 
         export_mime = {

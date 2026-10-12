@@ -33,7 +33,7 @@ def create_styled_title(
         raise ValueError("Heading level must be between 1 and 6")
 
     st.markdown(
-        f"<h{level} style='text-align: {align}; color: {color};'>" f"{text}</h{level}>",
+        f"<h{level} style='text-align: {align}; color: {color};'>{text}</h{level}>",
         unsafe_allow_html=True,
     )
 

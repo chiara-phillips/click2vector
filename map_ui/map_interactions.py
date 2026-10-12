@@ -4,8 +4,9 @@ import folium
 import streamlit as st
 from jinja2 import Template
 
-from map_ui.view import get_default_map_view, set_map_view, update_map_view_from_data
 from locations import add_point
+from map_ui.view import get_default_map_view, set_map_view, update_map_view_from_data
+
 
 def add_draggable_marker_handlers(map_object: folium.Map) -> None:
     """Report marker drag events to streamlit-folium.
@@ -60,6 +61,7 @@ def add_draggable_marker_handlers(map_object: folium.Map) -> None:
     )
     drag_handler.add_to(map_object)
 
+
 def handle_map_clicks(map_data):
     """Handle map click events and add new points.
 
@@ -83,9 +85,7 @@ def handle_map_clicks(map_data):
         if last_click != (clicked_lat, clicked_lon):
             add_point(clicked_lat, clicked_lon)
             st.session_state.last_click = (clicked_lat, clicked_lon)
-            current_view = st.session_state.get(
-                "last_map_view", get_default_map_view()
-            )
+            current_view = st.session_state.get("last_map_view", get_default_map_view())
             set_map_view(clicked_lat, clicked_lon, current_view["zoom"])
             return True
 
@@ -124,10 +124,7 @@ def handle_marker_drag(map_data: dict) -> bool:
 
         point = st.session_state.points[point_index]
         existing_lon, existing_lat = point["geometry"]["coordinates"]
-        if (
-            abs(existing_lon - lng) < 1e-8
-            and abs(existing_lat - lat) < 1e-8
-        ):
+        if abs(existing_lon - lng) < 1e-8 and abs(existing_lat - lat) < 1e-8:
             return False
 
         point["geometry"]["coordinates"] = [lng, lat]

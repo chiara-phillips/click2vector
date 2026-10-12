@@ -11,6 +11,7 @@ from map_ui.display.pin_colors import resolve_point_color
 from map_ui.display.properties import get_property_key, get_unique_property_values
 from styling import DEFAULT_BUTTON_COLOR
 
+
 def get_legend_display_names(property_key: str) -> dict[str, str]:
     """Return the legend label map for one property, creating it if needed.
 
@@ -29,9 +30,7 @@ def get_legend_display_names(property_key: str) -> dict[str, str]:
     return st.session_state.legend_display_names.setdefault(property_key, {})
 
 
-def get_legend_display_name(
-    property_key: str, value: str, default_label: str
-) -> str:
+def get_legend_display_name(property_key: str, value: str, default_label: str) -> str:
     """Return the legend label for one property value.
 
     Parameters
@@ -96,10 +95,10 @@ def legend_label_widget_key(property_key: str, value: str) -> str:
     str
         Streamlit widget key for the legend label input.
     """
-    digest = hashlib.sha256(
-        f"legend:{property_key}:{value}".encode()
-    ).hexdigest()[:16]
+    digest = hashlib.sha256(f"legend:{property_key}:{value}".encode()).hexdigest()[:16]
     return f"legend_label_{digest}"
+
+
 def add_map_color_legend(map_object: folium.Map) -> None:
     """Add a categorical color legend to the map when enabled.
 
@@ -123,9 +122,7 @@ def add_map_color_legend(map_object: folium.Map) -> None:
     default_color = st.session_state.get("pin_color", DEFAULT_BUTTON_COLOR)
     color_by_column = resolve_color_by_column_for_map()
     property_key = get_property_key(color_by_column)
-    unique_values = get_unique_property_values(
-        st.session_state.points, property_key
-    )
+    unique_values = get_unique_property_values(st.session_state.points, property_key)
     legend_rows = []
     for value in unique_values:
         default_label = value or f"(No {color_by_column.lower()})"
@@ -150,6 +147,6 @@ def add_map_color_legend(map_object: folium.Map) -> None:
         "background:white;border:1px solid #ccc;border-radius:4px;"
         "padding:8px 10px;max-width:220px;display:flex;"
         'flex-direction:column;gap:4px;">'
-        f'{"".join(legend_rows)}</div>'
+        f"{''.join(legend_rows)}</div>"
     )
     map_object.get_root().html.add_child(Element(legend_html))

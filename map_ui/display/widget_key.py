@@ -11,6 +11,7 @@ from map_ui.display.pin_colors import resolve_point_color
 from map_ui.display.properties import get_property_key, get_unique_property_values
 from styling import DEFAULT_BUTTON_COLOR
 
+
 def map_widget_key() -> str:
     """Return a st_folium key that changes when map layers need to refresh.
 
@@ -22,10 +23,7 @@ def map_widget_key() -> str:
     inset_enabled = st.session_state.get("show_inset_map", False)
     cluster_bubbles = st.session_state.get("cluster_overlapping_pins", True)
     label_column = st.session_state.get("label_by_column", "Name")
-    key = (
-        f"click2vector_map_{basemap}_{inset_enabled}_{cluster_bubbles}_"
-        f"{label_column}"
-    )
+    key = f"click2vector_map_{basemap}_{inset_enabled}_{cluster_bubbles}_{label_column}"
 
     if not st.session_state.get("show_map_legend", False):
         return key

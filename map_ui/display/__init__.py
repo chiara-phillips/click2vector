@@ -1,5 +1,8 @@
 """Map display: markers, legend, styling, table, and settings."""
 
+from map_ui.display.display_settings_expander import (
+    render_display_settings_expander,
+)
 from map_ui.display.legend import (
     add_map_color_legend,
     get_legend_display_name,
@@ -12,9 +15,6 @@ from map_ui.display.pin_colors import (
     sync_property_colors_from_pickers,
 )
 from map_ui.display.properties import get_property_key
-from map_ui.display.display_settings_expander import (
-    render_display_settings_expander,
-)
 from map_ui.display.widget_key import map_widget_key
 
 __all__ = [

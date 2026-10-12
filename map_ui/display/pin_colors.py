@@ -19,6 +19,7 @@ DESCRIPTION_COLOR_PALETTE = [
     "#000075",
 ]
 
+
 def get_property_colors(property_key: str) -> dict[str, str]:
     """Return the color map for one property, creating it if needed.
 
@@ -77,9 +78,7 @@ def sync_property_color_state(
         del colors[stale_value]
 
 
-def sync_property_colors_from_pickers(
-    points: list[dict], property_key: str
-) -> None:
+def sync_property_colors_from_pickers(points: list[dict], property_key: str) -> None:
     """Copy color picker widget values into ``property_value_colors``.
 
     Streamlit updates widget session state before the script runs, but the map
@@ -124,9 +123,7 @@ def property_color_widget_key(property_key: str, value: str) -> str:
     return f"prop_color_picker_{digest}"
 
 
-def resolve_point_color(
-    property_key: str, value: str, default_color: str
-) -> str:
+def resolve_point_color(property_key: str, value: str, default_color: str) -> str:
     """Return the marker color for a point from one property value.
 
     Parameters
@@ -146,6 +143,8 @@ def resolve_point_color(
     normalized = (value or "").strip()
     colors = st.session_state.get("property_value_colors", {}).get(property_key, {})
     return colors.get(normalized, default_color)
+
+
 def sync_property_color(property_key: str, value: str) -> None:
     """Persist one property color picker value in session state."""
     picker_key = property_color_widget_key(property_key, value)
