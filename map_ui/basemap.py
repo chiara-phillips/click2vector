@@ -3,15 +3,8 @@
 import streamlit as st
 import xyzservices.providers as xyz_providers
 
-DEFAULT_BASEMAP = "CartoDB.Positron"
-LEGACY_BASEMAP_NAMES = {
-    "CartoDB Positron": "CartoDB.Positron",
-    "OpenStreetMap": "CartoDB.Positron",
-}
-BASEMAP_PROVIDER_GROUPS = (
-    "CartoDB",
-    "Esri",
-)
+DEFAULT_BASEMAP = "Esri.WorldStreetMap"
+BASEMAP_PROVIDER_GROUPS = ("Esri",)
 BASEMAP_EXCLUDED_NAME_PARTS = (
     "OnlyLabels",
     "LabelsUnder",
@@ -106,24 +99,17 @@ def format_basemap_label(tile_name: str) -> str:
     if not variant:
         return tile_name
 
-    provider_labels = {
-        "CartoDB": "Carto",
-    }
-    provider_label = provider_labels.get(provider, provider)
     variant_label = (
         variant.replace("NoLabels", " (no labels)")
         .replace("DarkMatter", "Dark Matter")
         .replace("LabelsUnder", "Labels Under")
     )
-    return f"{provider_label} · {variant_label}"
+    return f"{provider} · {variant_label}"
 
 
 def normalize_basemap_name(name: str) -> str:
-    """Return a valid basemap tile id, mapping legacy names when needed."""
-    normalized = LEGACY_BASEMAP_NAMES.get(name, name)
-    if normalized in BASEMAP_OPTIONS:
-        return normalized
-    return DEFAULT_BASEMAP
+    """Return a valid basemap tile id, falling back to the default when needed."""
+    return name if name in BASEMAP_OPTIONS else DEFAULT_BASEMAP
 
 
 def ensure_basemap_picker_state() -> None:

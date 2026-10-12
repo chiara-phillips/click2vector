@@ -23,6 +23,7 @@ from map_ui.display.properties import (
 )
 from styling import DEFAULT_BUTTON_COLOR
 
+
 def render_display_settings_expander() -> None:
     """Render map display options and optional location color settings."""
     ensure_basemap_picker_state()
@@ -75,12 +76,8 @@ def render_display_settings_expander() -> None:
                     key="label_by_column_picker",
                 )
 
-            st.session_state.color_by_column = (
-                st.session_state.color_by_column_picker
-            )
-            st.session_state.label_by_column = (
-                st.session_state.label_by_column_picker
-            )
+            st.session_state.color_by_column = st.session_state.color_by_column_picker
+            st.session_state.label_by_column = st.session_state.label_by_column_picker
             property_key = get_property_key(st.session_state.color_by_column)
 
             sync_property_color_state(
@@ -94,9 +91,7 @@ def render_display_settings_expander() -> None:
             column_label = st.session_state.color_by_column
             legend_names = get_legend_display_names(property_key)
 
-            header_value, header_legend, header_color = st.columns(
-                COLOR_TABLE_COLUMNS
-            )
+            header_value, header_legend, header_color = st.columns(COLOR_TABLE_COLUMNS)
             with header_value:
                 st.caption("Group value")
             with header_legend:
@@ -106,9 +101,7 @@ def render_display_settings_expander() -> None:
 
             for value in unique_values:
                 category_label = value or f"(No {column_label.lower()})"
-                category_col, legend_col, color_col = st.columns(
-                    COLOR_TABLE_COLUMNS
-                )
+                category_col, legend_col, color_col = st.columns(COLOR_TABLE_COLUMNS)
                 with category_col:
                     st.text(category_label)
                 with legend_col:
@@ -124,9 +117,7 @@ def render_display_settings_expander() -> None:
                     )
                     legend_names[value] = st.session_state[label_key]
                 with color_col:
-                    picker_key = property_color_widget_key(
-                        property_key, value
-                    )
+                    picker_key = property_color_widget_key(property_key, value)
                     if picker_key not in st.session_state:
                         st.session_state[picker_key] = colors[value]
                     st.color_picker(

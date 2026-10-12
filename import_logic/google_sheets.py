@@ -112,7 +112,9 @@ def load_sheet_data(csv_url, header=0):
         raise Exception(f"Could not access Google Sheet: {e}")
 
 
-def detect_likely_header_row(csv_url: str, use_wkt: bool, max_scan: int = 5) -> int | None:
+def detect_likely_header_row(
+    csv_url: str, use_wkt: bool, max_scan: int = 5
+) -> int | None:
     """Detect whether coordinate headers appear below row 1.
 
     Parameters
@@ -177,11 +179,7 @@ def build_missing_column_error(
             f"tab)."
         )
     if len(df.columns) == 1:
-        expected = (
-            "a WKT geometry column"
-            if use_wkt
-            else "`lat` and `lon` columns"
-        )
+        expected = "a WKT geometry column" if use_wkt else "`lat` and `lon` columns"
         return (
             f"**No coordinate columns found on row 1.** The sheet only has one "
             f"column: {columns_text}. This often means a title row is above your "
@@ -305,7 +303,7 @@ def process_wkt_column(df, wkt_col):
             st.info(f"Added point {added_count}: lat={lat}, lon={lon}")
 
         except ValueError as e:
-            errors.append(f"Row {row_index+2}: {e} - {row[wkt_col]}")
+            errors.append(f"Row {row_index + 2}: {e} - {row[wkt_col]}")
 
     return added_count, errors
 
@@ -345,7 +343,7 @@ def process_lat_lon_columns(df, lat_col, lon_col):
 
         except ValueError:
             errors.append(
-                f"Row {row_index+2}: Invalid coordinates - lat: {row[lat_col]}, "
+                f"Row {row_index + 2}: Invalid coordinates - lat: {row[lat_col]}, "
                 f"lon: {row[lon_col]}"
             )
 
@@ -385,22 +383,14 @@ def import_from_google_sheets(sheets_url, use_wkt=True):
             # Validate we have the expected coordinate columns
             if use_wkt:
                 if not wkt_col:
-                    likely_header_row = detect_likely_header_row(
-                        csv_url, use_wkt=True
-                    )
-                    st.error(
-                        build_missing_column_error(df, True, likely_header_row)
-                    )
+                    likely_header_row = detect_likely_header_row(csv_url, use_wkt=True)
+                    st.error(build_missing_column_error(df, True, likely_header_row))
                     return False
                 st.success(f"Found WKT column: {wkt_col}")
             else:
                 if not lat_col or not lon_col:
-                    likely_header_row = detect_likely_header_row(
-                        csv_url, use_wkt=False
-                    )
-                    st.error(
-                        build_missing_column_error(df, False, likely_header_row)
-                    )
+                    likely_header_row = detect_likely_header_row(csv_url, use_wkt=False)
+                    st.error(build_missing_column_error(df, False, likely_header_row))
                     return False
                 st.success(f"Found coordinate columns: {lat_col} and {lon_col}")
 

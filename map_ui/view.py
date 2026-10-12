@@ -180,6 +180,8 @@ def set_map_view(lat: float, lon: float, zoom: int = 14) -> None:
         Updates ``last_map_view`` in session state.
     """
     st.session_state.last_map_view = {"center": [lat, lon], "zoom": zoom}
+
+
 def add_compact_attribution_style(map_object: folium.Map) -> None:
     """Use a smaller Leaflet attribution control on the map.
 

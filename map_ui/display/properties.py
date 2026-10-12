@@ -1,12 +1,11 @@
 """Point property keys and column helpers."""
 
-import streamlit as st
-
 TABLE_COLUMN_TO_PROPERTY = {
     "Name": "name",
     "Description": "description",
 }
 COLOR_TABLE_COLUMNS = [2, 2, 1]
+
 
 def get_property_key(column_name: str) -> str:
     """Return the point property key for a table column label.
@@ -82,6 +81,4 @@ def get_unique_property_values(points: list[dict], property_key: str) -> list[st
     list of str
         Sorted unique property values; empty string means no value set.
     """
-    return sorted(
-        {get_point_property_value(point, property_key) for point in points}
-    )
+    return sorted({get_point_property_value(point, property_key) for point in points})

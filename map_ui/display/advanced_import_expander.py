@@ -19,9 +19,7 @@ def render_advanced_import_expander() -> None:
                 label_visibility="collapsed",
             )
         with format_col:
-            st.caption(
-                "Coordinate format to import from Google Sheet (if applicable):"
-            )
+            st.caption("Coordinate format to import from Google Sheet (if applicable):")
             coordinate_format = st.radio(
                 "Coordinate format to import from Google Sheet (if applicable):",
                 options=["Lat/Long", "WKT Geometry"],
@@ -30,9 +28,7 @@ def render_advanced_import_expander() -> None:
             )
         use_wkt = coordinate_format == "WKT Geometry"
 
-        if sheets_url and sheets_url != st.session_state.get(
-            "last_sheets_url", ""
-        ):
+        if sheets_url and sheets_url != st.session_state.get("last_sheets_url", ""):
             st.session_state.last_sheets_url = sheets_url
             success = import_from_google_sheets(sheets_url, use_wkt)
             if success:

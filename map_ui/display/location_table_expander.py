@@ -5,6 +5,7 @@ import streamlit as st
 
 from map_ui.view import request_rerun
 
+
 def sync_points_table_changes() -> None:
     """Apply row deletions and edits from the point table data editor."""
     state = st.session_state.get("points_table")
