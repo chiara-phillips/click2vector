@@ -31,7 +31,7 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 3. **Run the application**
    ```bash
-   uv run streamlit run streamlit_app.py
+   uv run streamlit run src/app.py
    ```
 
 4. **Open your browser** and navigate to the local URL (typically http://localhost:8501)
@@ -60,6 +60,15 @@ Ruff handles Python linting, import sorting, and formatting:
 ```bash
 uv run ruff check .
 uv run ruff format .
+```
+
+Run complexity and dead-code analysis with Radon and Vulture:
+
+```bash
+uv run radon cc src -s -a
+uv run radon mi src -s
+uv run vulture src --min-confidence 80
+uv run pytest
 ```
 
 ## Usage

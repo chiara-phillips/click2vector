@@ -1,4 +1,8 @@
 ## CHANGELOG
+`0.11.4` : 2026-10-12
+- Made Esri World Gray Canvas the default basemap
+- Added pytest & moved source code to src folder
+
 `0.11.3` : 2026-10-12
 - Removed support for CARTO basemap options
 - Switched from poetry to uv for dependency managemnt

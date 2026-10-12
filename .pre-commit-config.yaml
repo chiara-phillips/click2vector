@@ -20,3 +20,11 @@ repos:
       - id: trailing-whitespace
       - id: check-docstring-first
       - id: check-case-conflict
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run pytest
+        entry: pytest
+        language: system
+        pass_filenames: false
