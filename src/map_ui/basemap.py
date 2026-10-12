@@ -3,7 +3,7 @@
 import streamlit as st
 import xyzservices.providers as xyz_providers
 
-DEFAULT_BASEMAP = "Esri.WorldStreetMap"
+DEFAULT_BASEMAP = "Esri.WorldGrayCanvas"
 BASEMAP_PROVIDER_GROUPS = ("Esri",)
 BASEMAP_EXCLUDED_NAME_PARTS = (
     "OnlyLabels",
