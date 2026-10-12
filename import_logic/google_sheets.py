@@ -7,7 +7,7 @@ from urllib.parse import parse_qs, urlparse
 import pandas as pd
 import streamlit as st
 
-from locations import add_point
+from points.session import add_point
 
 
 def extract_sheet_id(sheets_url):

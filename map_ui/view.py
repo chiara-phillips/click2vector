@@ -8,8 +8,6 @@ import streamlit as st
 
 MAP_HEIGHT = 500
 
-MAP_HEIGHT = 500
-
 
 def request_rerun() -> None:
     """Defer rerun until after widgets below the map have rendered."""

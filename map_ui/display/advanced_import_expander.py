@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from import_logic import import_from_google_sheets
+from import_logic.google_sheets import import_from_google_sheets
 from map_ui.view import request_rerun
 
 
