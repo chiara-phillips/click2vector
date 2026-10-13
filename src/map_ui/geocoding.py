@@ -11,7 +11,7 @@ from map_ui.display.advanced_import_expander import render_advanced_import_expan
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 PHOTON_URL = "https://photon.komoot.io/api/"
 GEOCODER_APP_URL = "https://click2vector.streamlit.app/"
-USER_AGENT = f"click2vector/0.11.2 ({GEOCODER_APP_URL})"
+USER_AGENT = f"click2vector/0.11.5 ({GEOCODER_APP_URL})"
 
 
 def _geocode_request_params() -> dict:
@@ -173,4 +173,3 @@ def render_search_section() -> None:
                     request_rerun()
 
         render_advanced_import_expander()
-
