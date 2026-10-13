@@ -31,7 +31,7 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 3. **Run the application**
    ```bash
-   uv run streamlit run src/app.py
+   uv run streamlit run streamlit_app.py
    ```
 
 4. **Open your browser** and navigate to the local URL (typically http://localhost:8501)

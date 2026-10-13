@@ -1,4 +1,8 @@
 ## CHANGELOG
+`0.11.5` : 2026-10-14
+- Moved the Streamlit app entrypoint to the repository root as
+  `streamlit_app.py` and updated Codespaces dependency setup to use uv.
+
 `0.11.4` : 2026-10-12
 - Made Esri World Gray Canvas the default basemap
 - Added pytest & moved source code to src folder

@@ -1,5 +1,10 @@
 """Click 2 Vector Streamlit app."""
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
 import streamlit as st
 
 from export_logic.export_settings_expander import render_export_settings_expander

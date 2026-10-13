@@ -1,6 +1,6 @@
 [project]
 name = "click2vector"
-version = "0.11.3"
+version = "0.11.5"
 description = "Click 2 Vector: interactive map for creating and exporting vector points"
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
