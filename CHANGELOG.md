@@ -1,4 +1,7 @@
 ## CHANGELOG
+`0.11.7` : 2026-11-08
+- Relaxed the uv version requirement for compatibility with Streamlit Community Cloud.
+
 `0.11.6` : 2026-11-08
 - Declare uv 0.13.7 as required and upgrade dependencies.
 
