@@ -1,4 +1,7 @@
 ## CHANGELOG
+`0.11.6` : 2026-11-08
+- Declare uv 0.13.7 as required and upgrade dependencies.
+
 `0.11.5` : 2026-10-14
 - Moved the Streamlit app entrypoint to the repository root as
   `streamlit_app.py` and updated Codespaces dependency setup to use uv.

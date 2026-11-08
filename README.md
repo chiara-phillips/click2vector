@@ -14,7 +14,7 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 ### Prerequisites
 
 - Python 3.11+
-- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.7 or newer
 
 ### Installation
 

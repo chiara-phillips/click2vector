@@ -1,6 +1,6 @@
 [project]
 name = "click2vector"
-version = "0.11.5"
+version = "0.11.6"
 description = "Click 2 Vector: interactive map for creating and exporting vector points"
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
@@ -25,6 +25,7 @@ dev = [
 
 [tool.uv]
 package = false
+required-version = ">=0.13.7"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
